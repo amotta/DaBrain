@@ -1,6 +1,7 @@
 #ifndef NET_H
 #define NET_H
 
+#include <stdlib.h>
 #include "neuron.h"
 
 /*
