@@ -28,6 +28,8 @@ typedef struct {
 	float u;
 	// firing?
 	bool firing;
+	// synaptic current
+	float I;
 } neuronDynState_t;
 
 /*
