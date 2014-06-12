@@ -17,5 +17,7 @@ typedef struct {
 } net_t;
 
 void netNew(net_t * pNet);
+void netInit(net_t * pNet);
+void netUpdate(net_t * pNet);
 
 #endif

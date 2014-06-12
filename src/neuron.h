@@ -40,4 +40,8 @@ typedef struct {
 	neuronDynState_t dynState;
 } neuron_t;
 
+neuron_t neuronInitExc(float r);
+neuron_t neuronInitInh(float r);
+void neuronUpdate(neuron_t * pNeuron);
+
 #endif
