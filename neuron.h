@@ -26,6 +26,9 @@ typedef struct {
 	float u;
 } neuronDynState_t;
 
+/*
+** All data for a single neuron is collected in this structure.
+*/
 typedef struct {
 	neuronDynParam_t dynParam;
 	neuronDynState_t dynState;
