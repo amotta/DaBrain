@@ -16,4 +16,6 @@ typedef struct {
 	float ** synapses;
 } net_t;
 
+void netNew(net_t * pNet);
+
 #endif
