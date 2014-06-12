@@ -9,7 +9,7 @@
 */
 typedef struct {
 	// number of neurons
-	size_t numNeurons;
+	const size_t numNeurons;
 	// array of all neurons
 	neuron_t * neurons;
 	// matrix with synapic strength
