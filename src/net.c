@@ -55,6 +55,9 @@ void netUpdateCurrent(net_t * pNet){
 		// update current
 		pNet->neurons[i].dynState.I = I;
 	}
+
+	// update time
+	pNet->time++;
 }
 
 void netUpdate(net_t * pNet){
