@@ -1,6 +1,8 @@
 #ifndef NEURON_H
 #define NEURON_H
 
+#include <stdbool.h>
+
 /*
 ** This structure contains all parameters for the
 ** model of neuron dynamics.
@@ -24,6 +26,8 @@ typedef struct {
 	float v;
 	// recovery variable
 	float u;
+	// firing?
+	bool firing;
 } neuronDynState_t;
 
 /*
