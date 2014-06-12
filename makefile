@@ -15,6 +15,7 @@ CFLAGS += -Winit-self -Wuninitialized
 CFLAGS += -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes
 CFLAGS += -Wpadded -Wshadow
 CFLAGS += -std=c99
+CFLAGS += -O2
 
 # File names:
 SOURCES = $(wildcard *.c)
