@@ -18,6 +18,9 @@ CFLAGS += -Wpadded -Wshadow
 CFLAGS += -std=c99
 CFLAGS += -O2
 
+# Libraries
+LIBS = -lcudart
+
 # C files
 CSRC = $(wildcard *.c)
 # Nvidia CU files
@@ -33,7 +36,6 @@ all: $(APPNAME)
 # Handy actions:
 clean:
 	rm -rf ${BUILDDIR}
-mrproper: clean
 	rm -f ${APPNAME}
 run:
 	./${APPNAME}
@@ -54,11 +56,10 @@ $(BUILDDIR)/%.o: %.cu
 	$(NVCC) -M $@ $< > ${BUILDDIR}/$*.d
 $(APPNAME): $(OBJECTS)
 	@printf "linking \033[1m%s\033[0m ...\n" $@
-	$(CC) ${OBJECTS} -o $@
+	$(NVCC) ${LIBS} ${OBJECTS} -o $@
 
 # Phony targets:
 .PHONY: all
 .PHONY: clean
-.PHONY: mrproper
 .PHONY: run
 .PHONY: all
