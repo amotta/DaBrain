@@ -5,7 +5,8 @@
 #include "net.h"
 
 void usage(){
-	printf("Number of neurons missing\n");
+	printf("dabrain [options] numNeurons\n");
+	printf("\tNo options yet\n");
 }
 
 int main(int argc, char ** argv){
