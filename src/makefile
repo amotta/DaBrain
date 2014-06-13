@@ -2,7 +2,8 @@
 # Built from the amazing template by Ayekat
 
 # Compiler:
-CC ?= gcc
+CC = gcc
+NVCC = nvcc
 
 # Application name:
 APPNAME = dabrain
@@ -17,9 +18,12 @@ CFLAGS += -Wpadded -Wshadow
 CFLAGS += -std=c99
 CFLAGS += -O2
 
-# File names:
-SOURCES = $(wildcard *.c)
-OBJECTS = $(SOURCES:%.c=build/%.o)
+# C files
+CSRC = $(wildcard *.c)
+# Nvidia CU files
+NVCSRC = $(wildcard *.cu)
+# Object files
+OBJECTS = $(CSRC:%.c=build/%.o) $(NVCSRC:%.cu=build/%.o)
 DEPENDS = $(OBJECTS:%.o=%.d)
 BUILDDIR = build
 
@@ -43,6 +47,11 @@ $(BUILDDIR)/%.o: %.c
 	@printf "compiling \033[1m%s\033[0m ...\n" $@
 	$(CC) ${CFLAGS} -c $< -o $@
 	$(CC) ${CFLAGS} -MM -MT $@ $< > ${BUILDDIR}/$*.d
+$(BUILDDIR)/%.o: %.cu
+	@if [ ! -d ${BUILDDIR} ]; then mkdir ${BUILDDIR}; fi
+	@printf "compiling \033[1m%s\033[0m ...\n" $@
+	$(NVCC) -c $< -o $@
+	$(NVCC) -M $@ $< > ${BUILDDIR}/$*.d
 $(APPNAME): $(OBJECTS)
 	@printf "linking \033[1m%s\033[0m ...\n" $@
 	$(CC) ${OBJECTS} -o $@
