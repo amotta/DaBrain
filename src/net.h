@@ -1,7 +1,6 @@
 #ifndef NET_H
 #define NET_H
 
-#include <stdlib.h>
 #include "neuron.h"
 
 /*
@@ -9,17 +8,26 @@
 */
 typedef struct {
 	// number of neurons
-	const size_t numNeurons;
+	const int numNeurons;
+	// count of excitatory neurons
+	const int numExc; 
 	// time
-	size_t time;
-	// array of all neurons
-	neuron_t * neurons;
-	// matrix with synapic strength
-	float ** synapses;
+	int t;
+	// neuron dynamics parameter
+	const float * dynParam;
+	// neuron state
+	float * dynState;
+	// neuron firing
+	float * firing;
+	// synaptic current
+	float * Isyn;
+	// synapse matrix
+	const float * S;
 } net_t;
 
 void netNew(net_t * pNet);
 void netInit(net_t * pNet);
 void netUpdate(net_t * pNet);
+net_t netCopyToGPU(const net_t * hNet);
 
 #endif

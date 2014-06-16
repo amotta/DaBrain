@@ -4,6 +4,6 @@
 #include <stdio.h>
 #include "net.h"
 
-void logFiring(net_t * pNet, FILE * file);
+void logFiring(const net_t * pNet, FILE * file);
 
 #endif

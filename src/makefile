@@ -18,8 +18,10 @@ CFLAGS += -Wpadded -Wshadow
 CFLAGS += -std=c99
 CFLAGS += -O2
 
+NVCCFLAGS = -arch=sm_20
+
 # Libraries
-LIBS = -lcudart
+LIBS = -lcudart -lcublas
 
 # C files
 CSRC = $(wildcard *.c)
@@ -52,11 +54,11 @@ $(BUILDDIR)/%.o: %.c
 $(BUILDDIR)/%.o: %.cu
 	@if [ ! -d ${BUILDDIR} ]; then mkdir ${BUILDDIR}; fi
 	@printf "compiling \033[1m%s\033[0m ...\n" $@
-	$(NVCC) -c $< -o $@
-	$(NVCC) -M $@ $< > ${BUILDDIR}/$*.d
+	$(NVCC) ${NVCCFLAGS} -c $< -o $@
+	$(NVCC) ${NVCCFLAGS} -M $@ $< > ${BUILDDIR}/$*.d
 $(APPNAME): $(OBJECTS)
 	@printf "linking \033[1m%s\033[0m ...\n" $@
-	$(NVCC) ${LIBS} ${OBJECTS} -o $@
+	$(NVCC) ${NVCCFLAGS} ${LIBS} ${OBJECTS} -o $@
 
 # Phony targets:
 .PHONY: all

@@ -1,11 +1,11 @@
 #include "log.h"
 
-void logFiring(net_t * pNet, FILE * logFile){
+void logFiring(const net_t * pNet, FILE * logFile){
 	if(!logFile) return;
 
-	for(size_t n = 0; n < pNet->numNeurons; n++){
-		if(pNet->neurons[n].dynState.firing){
-			fprintf(logFile, "%lu\t%lu\n", pNet->time, n);
+	for(int n = 0; n < pNet->numNeurons; n++){
+		if(pNet->firing[n]){
+			fprintf(logFile, "%d\t%d\n", pNet->t, n);
 		}
 	}
 }
