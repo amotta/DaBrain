@@ -23,6 +23,7 @@ typedef struct {
 
 void netNew(net_t * pNet);
 void netInit(net_t * pNet);
+void netUpdate(net_t * pNet);
 net_t netCopyToGPU(const net_t * hNet);
 
 #endif

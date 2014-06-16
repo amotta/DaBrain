@@ -43,14 +43,13 @@ void netInitDynParam(net_t * pNet){
 	for(int n = 0; n < pNet->numExc; n++){
 		float r = (float) rand() / RAND_MAX;
 		float * param = (float *) &pNet->dynParam[n * DYN_PARAM_LEN];
-
 		param[DYN_PARAM_A] = 0.02f;
 		param[DYN_PARAM_B] = 0.2f;
 		param[DYN_PARAM_C] = -65.0f + 15.0f * powf(r, 2);
 		param[DYN_PARAM_D] = 8.0f - 6.0f * powf(r, 2);
 	}
 
-	for(int n = 0; n < pNet->numNeurons; n++){
+	for(int n = pNet->numExc; n < pNet->numNeurons; n++){
 		float r = (float) rand() / RAND_MAX;
 		float * param = (float *) &pNet->dynParam[n * DYN_PARAM_LEN];
 
@@ -106,6 +105,34 @@ void netInit(net_t * pNet){
 	netInitDynParam(pNet);
 	netInitDynState(pNet);
 	netInitSynapse(pNet);
+}
+
+void netUpdateCurrent(net_t * pNet){
+	gpuMultiplyMV(
+		pNet->S,
+		pNet->numNeurons,
+		pNet->numNeurons,
+		(const float *) &pNet->dynState[DYN_STATE_FIRING],
+		DYN_PARAM_LEN,
+		(float *) &pNet->dynState[DYN_STATE_I_SYN],
+		DYN_PARAM_LEN
+	);
+}
+
+void netUpdateState(net_t * pNet){
+	gpuUpdateState(
+		pNet->numNeurons,
+		pNet->dynState,
+		pNet->dynParam
+	);
+}
+
+void netUpdate(net_t * pNet){
+	netUpdateCurrent(pNet);
+	netUpdateState(pNet);
+
+	// increment time
+	pNet->t++;
 }
 
 net_t netCopyToGPU(const net_t * hNet){
