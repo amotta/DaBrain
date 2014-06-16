@@ -1,71 +1,108 @@
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "net.h"
 
 void netNew(net_t * pNet){
-	// alloc neurons
-	pNet->neurons = calloc(pNet->numNeurons, sizeof(neuron_t));
+	// neuron parameters
+	pNet->dynParam = (const float *) calloc(
+		pNet->numNeurons * DYN_PARAM_LEN,
+		sizeof(float)
+	);
 
-	// alloc synapse table
-	pNet->synapses = calloc(pNet->numNeurons, sizeof(float *));
-	for(size_t i = 0; i < pNet->numNeurons; i++){
-		pNet->synapses[i] = calloc(pNet->numNeurons, sizeof(float));
+	if(!pNet->dynParam){
+		printf("Could not allocate memory for neuron parameters\n");
+		return;
+	}
+
+	// neuron state
+	pNet->dynState = (float *) calloc(
+		pNet->numNeurons * DYN_STATE_LEN,
+		sizeof(float)
+	);
+
+	if(!pNet->dynState){
+		printf("Could not allocate memory for neuron state\n");
+		return;
+	}
+
+	// synapse table
+	pNet->S = (float *) calloc(
+		pNet->numNeurons * pNet->numNeurons,
+		sizeof(float)
+	);
+
+	if(!pNet->S){
+		printf("Could not allocate memory for synapse matrix\n");
+		return;
 	}
 }
 
-#define FRAC_EXC 0.8
-void netInit(net_t * pNet){
-	size_t numExc = FRAC_EXC * pNet->numNeurons;
-	
-	// build excitatory neurons
-	for(size_t i = 0; i < numExc; i++){
-		pNet->neurons[i] = neuronInitExc((float) rand() / RAND_MAX);
-		for(size_t s = 0; s < pNet->numNeurons; s++){
-			pNet->synapses[s][i] = +0.5 * rand() / RAND_MAX;
-		}
+void netInitDynParam(net_t * pNet){
+	for(int n = 0; n < pNet->numExc; n++){
+		float r = (float) rand() / RAND_MAX;
+		float * param = (float *) &pNet->dynParam[n * DYN_PARAM_LEN];
+
+		param[DYN_PARAM_A] = 0.02f;
+		param[DYN_PARAM_B] = 0.2f;
+		param[DYN_PARAM_C] = -65.0f + 15.0f * powf(r, 2);
+		param[DYN_PARAM_D] = 8.0f - 6.0f * powf(r, 2);
 	}
 
-	// build inhibitory neurons
-	for(size_t i = numExc; i < pNet->numNeurons; i++){
-		pNet->neurons[i] = neuronInitInh((float) rand() / RAND_MAX);
-		for(size_t s = 0; s < pNet->numNeurons; s++){
-			pNet->synapses[s][i] = -1.0 * rand() / RAND_MAX;
-		}
+	for(int n = 0; n < pNet->numNeurons; n++){
+		float r = (float) rand() / RAND_MAX;
+		float * param = (float *) &pNet->dynParam[n * DYN_PARAM_LEN];
+
+		param[DYN_PARAM_A] = 0.02f + 0.08f * r;
+		param[DYN_PARAM_B] = 0.25f - 0.05f * r;
+		param[DYN_PARAM_C] = -65.0f;
+		param[DYN_PARAM_D] = 2.0f;	
 	}
 }
 
-void netUpdateCurrent(net_t * pNet){
-	size_t numExc = FRAC_EXC * pNet->numNeurons;
+void netInitDynState(net_t * pNet){
+	for(int n = 0; n < pNet->numNeurons; n++){
+		float r = (float) rand() / RAND_MAX;
+		float * param = (float *) &pNet->dynParam[n * DYN_PARAM_LEN];
+		float * state = (float *) &pNet->dynState[n * DYN_STATE_LEN];
 
-	for(size_t i = 0; i < pNet->numNeurons; i++){
-		float I = 0;
+		// membrane voltage
+		state[DYN_STATE_V] = -65.0f;
+		// recovery
+		state[DYN_STATE_U] = -65.0f * param[DYN_PARAM_B];
+		// firing
+		state[DYN_STATE_FIRING] = 0.0f;
+		
+		// thalamic input
+		if(n < pNet->numExc){
+			state[DYN_STATE_I_THAL] = 5.0f * r;
+		}else{
+			state[DYN_STATE_I_THAL] = 2.0f * r;
+		}
 
-		// collect synaptic currents
-		for(size_t s = 0; s < pNet->numNeurons; s++){
-			if(pNet->neurons[s].dynState.firing){
-				I += pNet->synapses[i][s];
+		// synaptic current
+		state[DYN_STATE_I_SYN] = 0.0f;
+	}
+}
+
+void netInitSynapse(net_t * pNet){
+	float * S = (float *) pNet->S;
+
+	for(int pre = 0; pre < pNet->numNeurons; pre++){
+		for(int post = 0; post < pNet->numNeurons; post++){
+			float r = (float) rand() / RAND_MAX;
+			
+			if(pre < pNet->numExc){
+				S[pre * pNet->numNeurons + post] = +0.5f * r;
+			}else{
+				S[pre * pNet->numNeurons + post] = -1.0f * r;
 			}
 		}
-
-		// simulate thalamic input
-		if(i < numExc){
-			I += 5.0 * rand() / RAND_MAX;
-		}else{
-			I += 2.0 * rand() / RAND_MAX;
-		}
-
-		// update current
-		pNet->neurons[i].dynState.I = I;
 	}
-
-	// update time
-	pNet->time++;
 }
 
-void netUpdate(net_t * pNet){
-	// update currents
-	netUpdateCurrent(pNet);
-
-	// update state
-	for(size_t i = 0; i < pNet->numNeurons; i++){
-		neuronUpdate(&pNet->neurons[i]);
-	}
+void netInit(net_t * pNet){
+	netInitDynParam(pNet);
+	netInitDynState(pNet);
+	netInitSynapse(pNet);
 }

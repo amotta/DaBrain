@@ -12,17 +12,16 @@ typedef struct {
 	// count of excitatory neurons
 	const int numExc; 
 	// time
-	int time;
+	int t;
 	// neuron dynamics parameter
-	float * dynParam;
+	const float * dynParam;
 	// neuron state
 	float * dynState;
 	// synapse matrix
-	float * S;
+	const float * S;
 } net_t;
 
 void netNew(net_t * pNet);
 void netInit(net_t * pNet);
-void netUpdate(net_t * pNet);
 
 #endif
