@@ -16,12 +16,6 @@ enum DYN_STATE {
 	DYN_STATE_V,
 	// recovery variable
 	DYN_STATE_U,
-	// firing
-	DYN_STATE_FIRING,
-	// thalamic current,
-	DYN_STATE_I_THAL,
-	// synaptic current
-	DYN_STATE_I_SYN,
 	DYN_STATE_LEN
 };
 
