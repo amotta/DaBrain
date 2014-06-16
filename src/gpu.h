@@ -8,9 +8,17 @@ extern "C" {
 void gpuCopyMemory(const void * hPtr, void ** dPtr, size_t size);
 void gpuMultiplyMV(
 	const float * mat,
-	const float * vectIn,
+	int matRows,
+	int matCols,
+	const float * vecIn,
+	int vecInStride,
 	float * vecOut,
-	int rows, int cols
+	int vecOutStride
+);
+void gpuUpdateState(
+	int numNeurons,
+	float * dynState,
+	const float * dynParam
 );
 
 #ifdef __cplusplus
