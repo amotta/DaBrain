@@ -1,6 +1,7 @@
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
+#include "gpu.h"
 #include "net.h"
 
 void netNew(net_t * pNet){
@@ -105,4 +106,38 @@ void netInit(net_t * pNet){
 	netInitDynParam(pNet);
 	netInitDynState(pNet);
 	netInitSynapse(pNet);
+}
+
+net_t netCopyToGPU(const net_t * hNet){
+	const float * dynParam = NULL;
+	gpuCopyMemory(
+		(const void *) hNet->dynParam,
+		(void **) &dynParam,
+		hNet->numNeurons * DYN_PARAM_LEN * sizeof(float)
+	);
+
+	float * dynState = NULL;
+	gpuCopyMemory(
+		(const void *) hNet->dynState,
+		(void **) &dynState,
+		hNet->numNeurons * DYN_STATE_LEN * sizeof(float)
+	);
+
+	const float * S = NULL;
+	gpuCopyMemory(
+		(const void *) hNet->S,
+		(void **) &S,
+		hNet->numNeurons * hNet->numNeurons * sizeof(float)
+	);
+
+	net_t dNet = {
+		.numNeurons = hNet->numNeurons,
+		.numExc = hNet->numExc,
+		.t = hNet->t,
+		.dynParam = dynParam,
+		.dynState = dynState,
+		.S = S
+	};
+
+	return dNet;
 }
