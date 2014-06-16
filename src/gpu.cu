@@ -108,8 +108,8 @@ __global__ void updateState(
 	}
 
 	// update state
-	v += 0.5f * (0.04f * v * v + 5.0f * v + 140 - u + I);
-	v += 0.5f * (0.04f * v * v + 5.0f * v + 140 - u + I);
+	v += 0.5f * (0.04f * v * v + 5.0f * v + 140 - u + I + 5.0f);
+	v += 0.5f * (0.04f * v * v + 5.0f * v + 140 - u + I + 5.0f);
 	u += nDynParam[DYN_PARAM_A] * (nDynParam[DYN_PARAM_B] * v - u);
 
 	// write result
