@@ -5,7 +5,8 @@
 extern "C" {
 #endif
 
-void gpuCopyMemory(const void * hPtr, void ** dPtr, size_t size);
+void gpuCopyMemoryToGPU(const void * hPtr, void ** dPtr, size_t size);
+void gpuCopyMemoryFromGPU(const void * dPtr, void * hPtr, size_t size);
 void gpuMultiplyMV(
 	const float * mat,
 	int matRows,
@@ -18,7 +19,9 @@ void gpuMultiplyMV(
 void gpuUpdateState(
 	int numNeurons,
 	float * dynState,
-	const float * dynParam
+	float * firing,
+	const float * dynParam,
+	const float * Isyn
 );
 
 #ifdef __cplusplus

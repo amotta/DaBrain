@@ -17,7 +17,7 @@ void gpuInit(){
 	ready = true;
 }
 
-void gpuCopyMemory(const void * hPtr, void ** dPtr, size_t size){
+void gpuCopyMemoryToGPU(const void * hPtr, void ** dPtr, size_t size){
 	cudaError_t error = cudaSuccess;
 
 	error = cudaMalloc(dPtr, size);
@@ -28,7 +28,18 @@ void gpuCopyMemory(const void * hPtr, void ** dPtr, size_t size){
 
 	error = cudaMemcpy((void *) *dPtr, hPtr, size, cudaMemcpyHostToDevice);
 	if(error != cudaSuccess){
-		printf("Failed to copy data. Error:\n");
+		printf("Failed to copy data to GPU. Error:\n");
+		printf("%s\n", cudaGetErrorString(error));
+		return;
+	}
+}
+
+void gpuCopyMemoryFromGPU(const void * dPtr, void * hPtr, size_t size){
+	cudaError_t error = cudaSuccess;
+
+	error = cudaMemcpy(hPtr, dPtr, size, cudaMemcpyDeviceToHost);
+	if(error != cudaSuccess){
+		printf("Failed to copy data to host. Error:\n");
 		printf("%s\n", cudaGetErrorString(error));
 		return;
 	}
@@ -83,7 +94,9 @@ void gpuMultiplyMV(
 
 __global__ void updateState(
 	float * dynState,
-	const float * dynParam
+	float * firing,
+	const float * dynParam,
+	const float * Isyn
 ){
 	// neuron id
 	int nId = blockDim.x * blockIdx.x + threadIdx.x;
@@ -94,37 +107,40 @@ __global__ void updateState(
 
 	float v = nDynState[DYN_STATE_V];
 	float u = nDynState[DYN_STATE_U];
-	float I = nDynState[DYN_STATE_I_SYN];
+	// synaptic current + thalamic input
+	float I = Isyn[nId] + 5.0f;
 
 	if(v >= 30.0f){
 		v = nDynParam[DYN_PARAM_C];
 		u = u + nDynParam[DYN_PARAM_D];
 
 		// neuron is firing
-		nDynState[DYN_STATE_FIRING] = 1.0f;
+		firing[nId] = 1.0f;
 	}else{
 		// not firing
-		nDynState[DYN_STATE_FIRING] = 0.0f;
+		firing[nId] = 0.0f;
 	}
 
 	// update state
-	v += 0.5f * (0.04f * v * v + 5.0f * v + 140 - u + I + 5.0f);
-	v += 0.5f * (0.04f * v * v + 5.0f * v + 140 - u + I + 5.0f);
+	v += 0.5f * (0.04f * v * v + 5.0f * v + 140 - u + I);
+	v += 0.5f * (0.04f * v * v + 5.0f * v + 140 - u + I);
 	u += nDynParam[DYN_PARAM_A] * (nDynParam[DYN_PARAM_B] * v - u);
 
 	// write result
-	dynState[DYN_STATE_V] = v;
-	dynState[DYN_STATE_U] = u;
+	nDynState[DYN_STATE_V] = v;
+	nDynState[DYN_STATE_U] = u;
 }
 
 #define BLOCK_SIZE (32 * 32)
 void gpuUpdateState(
 	int numNeurons,
 	float * dynState,
-	const float * dynParam
+	float * firing,
+	const float * dynParam,
+	const float * Isyn
 ){
 	dim3 threads(BLOCK_SIZE);
 	dim3 grid((int) ceil((double) numNeurons / BLOCK_SIZE));
 
-	updateState<<<grid, threads>>>(dynState, dynParam);
+	updateState<<<grid, threads>>>(dynState, firing, dynParam, Isyn);
 }
