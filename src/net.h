@@ -17,6 +17,10 @@ typedef struct {
 	const float * dynParam;
 	// neuron state
 	float * dynState;
+	// neuron firing
+	float * firing;
+	// synaptic current
+	float * Isyn;
 	// synapse matrix
 	const float * S;
 } net_t;

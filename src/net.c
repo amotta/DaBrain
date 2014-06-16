@@ -7,10 +7,8 @@
 void netNew(net_t * pNet){
 	// neuron parameters
 	pNet->dynParam = (const float *) calloc(
-		pNet->numNeurons * DYN_PARAM_LEN,
-		sizeof(float)
+		pNet->numNeurons * DYN_PARAM_LEN, sizeof(float)
 	);
-
 	if(!pNet->dynParam){
 		printf("Could not allocate memory for neuron parameters\n");
 		return;
@@ -18,21 +16,31 @@ void netNew(net_t * pNet){
 
 	// neuron state
 	pNet->dynState = (float *) calloc(
-		pNet->numNeurons * DYN_STATE_LEN,
-		sizeof(float)
+		pNet->numNeurons * DYN_STATE_LEN, sizeof(float)
 	);
-
 	if(!pNet->dynState){
 		printf("Could not allocate memory for neuron state\n");
 		return;
 	}
 
+	// neuron firing
+	pNet->firing = (float *) calloc(pNet->numNeurons, sizeof(float));
+	if(!pNet->firing){
+		printf("Could not allocate memory for neuron firing\n");
+		return;
+	}
+
+	// synaptic current
+	pNet->Isyn = (float *) calloc(pNet->numNeurons, sizeof(float));
+	if(!pNet->Isyn){
+		printf("Could not allocate memory for synaptic current\n");
+		return;
+	}
+
 	// synapse table
 	pNet->S = (float *) calloc(
-		pNet->numNeurons * pNet->numNeurons,
-		sizeof(float)
+		pNet->numNeurons * pNet->numNeurons, sizeof(float)
 	);
-
 	if(!pNet->S){
 		printf("Could not allocate memory for synapse matrix\n");
 		return;
@@ -70,18 +78,6 @@ void netInitDynState(net_t * pNet){
 		state[DYN_STATE_V] = -65.0f;
 		// recovery
 		state[DYN_STATE_U] = -65.0f * param[DYN_PARAM_B];
-		// firing
-		state[DYN_STATE_FIRING] = 0.0f;
-		
-		// thalamic input
-		if(n < pNet->numExc){
-			state[DYN_STATE_I_THAL] = 5.0f * r;
-		}else{
-			state[DYN_STATE_I_THAL] = 2.0f * r;
-		}
-
-		// synaptic current
-		state[DYN_STATE_I_SYN] = 0.0f;
 	}
 }
 
@@ -112,10 +108,8 @@ void netUpdateCurrent(net_t * pNet){
 		pNet->S,
 		pNet->numNeurons,
 		pNet->numNeurons,
-		(const float *) &pNet->dynState[DYN_STATE_FIRING],
-		DYN_PARAM_LEN,
-		(float *) &pNet->dynState[DYN_STATE_I_SYN],
-		DYN_PARAM_LEN
+		(const float *) pNet->firing, 1,
+		pNet->Isyn, 1
 	);
 }
 
@@ -123,35 +117,48 @@ void netUpdateState(net_t * pNet){
 	gpuUpdateState(
 		pNet->numNeurons,
 		pNet->dynState,
-		pNet->dynParam
+		pNet->firing,
+		pNet->dynParam,
+		pNet->Isyn
 	);
 }
 
 void netUpdate(net_t * pNet){
 	netUpdateCurrent(pNet);
 	netUpdateState(pNet);
-
-	// increment time
-	pNet->t++;
 }
 
 net_t netCopyToGPU(const net_t * hNet){
 	const float * dynParam = NULL;
-	gpuCopyMemory(
+	gpuCopyMemoryToGPU(
 		(const void *) hNet->dynParam,
 		(void **) &dynParam,
 		hNet->numNeurons * DYN_PARAM_LEN * sizeof(float)
 	);
 
 	float * dynState = NULL;
-	gpuCopyMemory(
+	gpuCopyMemoryToGPU(
 		(const void *) hNet->dynState,
 		(void **) &dynState,
 		hNet->numNeurons * DYN_STATE_LEN * sizeof(float)
 	);
 
+	float * firing = NULL;
+	gpuCopyMemoryToGPU(
+		(const void *) hNet->firing,
+		(void **) &firing,
+		hNet->numNeurons * sizeof(float)
+	);
+
+	float * Isyn = NULL;
+	gpuCopyMemoryToGPU(
+		(const void *) hNet->Isyn,
+		(void **) &Isyn,
+		hNet->numNeurons * sizeof(float)
+	);
+
 	const float * S = NULL;
-	gpuCopyMemory(
+	gpuCopyMemoryToGPU(
 		(const void *) hNet->S,
 		(void **) &S,
 		hNet->numNeurons * hNet->numNeurons * sizeof(float)
@@ -163,6 +170,8 @@ net_t netCopyToGPU(const net_t * hNet){
 		.t = hNet->t,
 		.dynParam = dynParam,
 		.dynState = dynState,
+		.firing = firing,
+		.Isyn = Isyn,
 		.S = S
 	};
 
