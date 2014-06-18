@@ -107,7 +107,7 @@ void ioReadMatFieldCB(void * buf, size_t bufLen, void * data){
 	** assume that matrix is stored in column major format
 	*/
 	size_t offset = 0;
-	offset += statePtr->cols * statePtr->curCol;
+	offset += statePtr->rows * statePtr->curCol;
 	offset += statePtr->curRow;
 
 	// store value
