@@ -54,8 +54,12 @@ int netNew(net_t * pNet){
 }
 
 void netUpdateCurrent(net_t * pNet){
+	/*
+	** TODO
+	** change to banded matrix multiplication
+	*/
 	gpuMultiplyMV(
-		pNet->S,
+		pNet->syn,
 		pNet->numNeurons,
 		pNet->numNeurons,
 		(const float *) pNet->firing, 1,
@@ -108,15 +112,16 @@ net_t netCopyToGPU(const net_t * hNet){
 	);
 
 	const float * syn = NULL;
+	size_t synRows = hNet->synSuper + 1 + hNet->synSub;
+	size_t synCols = hNet->numNeurons;
 	gpuCopyMemoryToGPU(
 		(const void *) hNet->syn,
 		(void **) &syn,
-		hNet->numNeurons * hNet->numNeurons * sizeof(float)
+		synRows * synCols * sizeof(float)
 	);
 
 	net_t dNet = {
 		.numNeurons = hNet->numNeurons,
-		.numExc = hNet->numExc,
 		.t = hNet->t,
 		.dynParam = dynParam,
 		.dynState = dynState,
@@ -139,7 +144,7 @@ int netRead(
 	// read dynamics parameters
 	error = ioReadMat(
 		dynParamFile,
-		(float *) pNet->dynParams,
+		(float *) pNet->dynParam,
 		DYN_PARAM_LEN,
 		pNet->numNeurons
 	);
@@ -157,7 +162,7 @@ int netRead(
 	// read synapse matrix
 	error = ioReadMat(
 		synapseFile,
-		(float *) pNet->S,
+		(float *) pNet->syn,
 		pNet->synSuper + pNet->synSub + 1,
 		pNet->numNeurons
 	);
