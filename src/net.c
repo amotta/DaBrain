@@ -48,62 +48,6 @@ void netNew(net_t * pNet){
 	}
 }
 
-void netInitDynParam(net_t * pNet){
-	for(int n = 0; n < pNet->numExc; n++){
-		float r = (float) rand() / RAND_MAX;
-		float * param = (float *) &pNet->dynParam[n * DYN_PARAM_LEN];
-		param[DYN_PARAM_A] = 0.02f;
-		param[DYN_PARAM_B] = 0.2f;
-		param[DYN_PARAM_C] = -65.0f + 15.0f * powf(r, 2);
-		param[DYN_PARAM_D] = 8.0f - 6.0f * powf(r, 2);
-	}
-
-	for(int n = pNet->numExc; n < pNet->numNeurons; n++){
-		float r = (float) rand() / RAND_MAX;
-		float * param = (float *) &pNet->dynParam[n * DYN_PARAM_LEN];
-
-		param[DYN_PARAM_A] = 0.02f + 0.08f * r;
-		param[DYN_PARAM_B] = 0.25f - 0.05f * r;
-		param[DYN_PARAM_C] = -65.0f;
-		param[DYN_PARAM_D] = 2.0f;	
-	}
-}
-
-void netInitDynState(net_t * pNet){
-	for(int n = 0; n < pNet->numNeurons; n++){
-		float r = (float) rand() / RAND_MAX;
-		float * param = (float *) &pNet->dynParam[n * DYN_PARAM_LEN];
-		float * state = (float *) &pNet->dynState[n * DYN_STATE_LEN];
-
-		// membrane voltage
-		state[DYN_STATE_V] = -65.0f;
-		// recovery
-		state[DYN_STATE_U] = -65.0f * param[DYN_PARAM_B];
-	}
-}
-
-void netInitSynapse(net_t * pNet){
-	float * S = (float *) pNet->S;
-
-	for(int pre = 0; pre < pNet->numNeurons; pre++){
-		for(int post = 0; post < pNet->numNeurons; post++){
-			float r = (float) rand() / RAND_MAX;
-			
-			if(pre < pNet->numExc){
-				S[pre * pNet->numNeurons + post] = +0.5f * r;
-			}else{
-				S[pre * pNet->numNeurons + post] = -1.0f * r;
-			}
-		}
-	}
-}
-
-void netInit(net_t * pNet){
-	netInitDynParam(pNet);
-	netInitDynState(pNet);
-	netInitSynapse(pNet);
-}
-
 void netUpdateCurrent(net_t * pNet){
 	gpuMultiplyMV(
 		pNet->S,
@@ -158,10 +102,10 @@ net_t netCopyToGPU(const net_t * hNet){
 		hNet->numNeurons * sizeof(float)
 	);
 
-	const float * S = NULL;
+	const float * syn = NULL;
 	gpuCopyMemoryToGPU(
-		(const void *) hNet->S,
-		(void **) &S,
+		(const void *) hNet->syn,
+		(void **) &syn,
 		hNet->numNeurons * hNet->numNeurons * sizeof(float)
 	);
 
@@ -173,7 +117,7 @@ net_t netCopyToGPU(const net_t * hNet){
 		.dynState = dynState,
 		.firing = firing,
 		.Isyn = Isyn,
-		.S = S
+		.syn = syn
 	};
 
 	return dNet;
