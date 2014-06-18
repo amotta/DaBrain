@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "gpu.h"
+#include "io.h"
 #include "net.h"
 
 void netNew(net_t * pNet){
@@ -176,4 +177,129 @@ net_t netCopyToGPU(const net_t * hNet){
 	};
 
 	return dNet;
+}
+
+int netRead(
+	net_t * pNet,
+	const char * dynParamFile,
+	const char * dynStateFile,
+	const char * synapseFile
+){
+	int error;
+
+	// read dynamics parameters
+	error = ioReadMat(
+		dynParamFile,
+		(float *) pNet->dynParams,
+		DYN_PARAM_LEN,
+		pNet->numNeurons
+	);
+	if(error) return error;
+
+	// read dynamics state matrix
+	error = ioReadMat(
+		dynStateFile,
+		pNet->dynState,
+		DYN_STATE_LEN,
+		pNet->numNeurons
+	);
+	if(error) return error;
+
+	// read synapse matrix
+	error = ioReadMat(
+		synapseFile,
+		(float *) pNet->S,
+		pNet->synSuper + pNet->synSub + 1,
+		pNet->numNeurons
+	);
+	if(error) return error;
+
+	return 0;
+}
+
+int netReadSize(
+	int * pNumNeurons,
+	int * pSynSuper,
+	int * pSynSub,
+	const char * dynParamFile,
+	const char * dynStateFile,
+	const char * synapseFile
+){
+	int error;
+
+	/*
+	** check dynamics parameter matrix
+	*/
+	int dynParamRows, dynParamCols;
+	error = ioReadMatSize(
+		dynParamFile,
+		&dynParamRows,
+		&dynParamCols
+	);
+
+	if(error) return error;
+	if(dynParamRows != DYN_PARAM_LEN){
+		printf("Invalid row count in %s\n", dynParamFile);
+		return -1;
+	}
+
+	// set number of neurons
+	const int numNeurons = dynParamCols;
+
+	/*
+	** check dynamics state matrix
+	*/
+	int dynStateRows, dynStateCols;
+	error = ioReadMatSize(
+		dynStateFile,
+		&dynStateRows,
+		&dynStateCols
+	);
+
+	if(error) return error;
+	if(dynStateRows != DYN_STATE_LEN){
+		printf("Invalid row count in %s\n", dynStateFile);
+		return -1;
+	}
+
+	if(dynStateCols != numNeurons){
+		printf("Invalid column count in %s\n", dynStateFile);
+		return -1;
+	}
+
+	/*
+	** check synapse matrix
+	**
+	** NOTICE
+	** The synapse matrix is assumed to be banded with equal number of
+	** superdiagonals and subdiagonals. Together with the main diagonal
+	** this makes an odd number of rows in the matrix.
+	*/
+	int synapseRows, synapseCols;
+	error = ioReadMatSize(
+		synapseFile,
+		&synapseRows,
+		&synapseCols
+	);
+
+	if(error) return error;
+
+	if(synapseRows % 2 == 0){
+		printf("Expected odd number of rows in %s\n", synapseFile);
+		return -1;
+	}
+
+	if(synapseCols != dynParamCols){
+		printf("Invalid column count in %s\n", synapseFile);
+	}
+
+	const int synSuper = (synapseRows - 1) / 2;
+	const int synSub = (synapseRows - 1) / 2;
+
+	// write back
+	*pNumNeurons = numNeurons;
+	*pSynSuper = synSuper;
+	*pSynSub = synSub;
+
+	return 0;
 }

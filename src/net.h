@@ -31,5 +31,18 @@ void netNew(net_t * pNet);
 void netInit(net_t * pNet);
 void netUpdate(net_t * pNet);
 net_t netCopyToGPU(const net_t * hNet);
-
+int netRead(
+	net_t * pNet,
+	const char * dynParamFile,
+	const char * dynStateFile,
+	const char * synFile
+);
+int netReadSize(
+	int * pNumNeurons,
+	int * pSynSuper,
+	int * pSynSub,
+	const char * dynParamFile,
+	const char * dynStateFile,
+	const char * synFile
+);
 #endif
