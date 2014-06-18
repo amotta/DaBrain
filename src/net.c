@@ -163,7 +163,7 @@ int netRead(
 	error = ioReadMat(
 		synapseFile,
 		(float *) pNet->syn,
-		pNet->synSuper + pNet->synSub + 1,
+		pNet->synSuper + 1 + pNet->synSub,
 		pNet->numNeurons
 	);
 	if(error) return error;
