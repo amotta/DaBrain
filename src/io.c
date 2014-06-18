@@ -17,7 +17,7 @@ int ioReadCSV(
 	// try to open file
 	FILE * file = fopen(fileName, "r");
 	if(!file){
-		printf("Could not open CSV file\n");
+		printf("Could not open %s\n", fileName);
 		return -1;
 	}
 
@@ -59,7 +59,7 @@ int ioReadCSV(
 
 		if(bufParsed < bufRead){
 			csvStatus = csv_error(&csvParser);
-			printf("Error while parsing CSV file. Error:\n");
+			printf("Error while parsing %s. Error:\n", fileName);
 			printf("%s\n", csv_strerror(csvStatus));
 
 			fclose(file);
@@ -148,7 +148,7 @@ int ioReadMat(
 
 	// check for errors
 	if(status){
-		printf("Could not read matrix from CSV file.\n");
+		printf("Could not read matrix from %s\n", fileName);
 		return status;
 	}
 
@@ -191,7 +191,7 @@ int ioReadMatSize(const char * fileName, int * rows, int * cols){
 	);
 
 	if(status){
-		printf("Failed to read matrix size from CSV file.\n");
+		printf("Failed to read matrix size from %s\n", fileName);
 		return status;
 	}
 
