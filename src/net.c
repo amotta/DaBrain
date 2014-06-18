@@ -5,47 +5,52 @@
 #include "io.h"
 #include "net.h"
 
-void netNew(net_t * pNet){
+int netNew(net_t * pNet){
 	// neuron parameters
 	pNet->dynParam = (const float *) calloc(
-		pNet->numNeurons * DYN_PARAM_LEN, sizeof(float)
+		pNet->numNeurons * DYN_PARAM_LEN,
+		sizeof(float)
 	);
 	if(!pNet->dynParam){
 		printf("Could not allocate memory for neuron parameters\n");
-		return;
+		return -1;
 	}
 
 	// neuron state
 	pNet->dynState = (float *) calloc(
-		pNet->numNeurons * DYN_STATE_LEN, sizeof(float)
+		pNet->numNeurons * DYN_STATE_LEN,
+		sizeof(float)
 	);
 	if(!pNet->dynState){
 		printf("Could not allocate memory for neuron state\n");
-		return;
+		return -1;
 	}
 
 	// neuron firing
 	pNet->firing = (float *) calloc(pNet->numNeurons, sizeof(float));
 	if(!pNet->firing){
 		printf("Could not allocate memory for neuron firing\n");
-		return;
+		return -1;
 	}
 
 	// synaptic current
 	pNet->Isyn = (float *) calloc(pNet->numNeurons, sizeof(float));
 	if(!pNet->Isyn){
 		printf("Could not allocate memory for synaptic current\n");
-		return;
+		return -1;
 	}
 
 	// synapse table
-	pNet->S = (float *) calloc(
-		pNet->numNeurons * pNet->numNeurons, sizeof(float)
+	pNet->syn = (float *) calloc(
+		(pNet->synSuper + 1 + pNet->synSub) * pNet->numNeurons,
+		sizeof(float)
 	);
-	if(!pNet->S){
+	if(!pNet->syn){
 		printf("Could not allocate memory for synapse matrix\n");
-		return;
+		return -1;
 	}
+
+	return 0;
 }
 
 void netUpdateCurrent(net_t * pNet){

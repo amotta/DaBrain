@@ -27,7 +27,7 @@ typedef struct {
 	const int synSub;
 } net_t;
 
-void netNew(net_t * pNet);
+int netNew(net_t * pNet);
 void netInit(net_t * pNet);
 void netUpdate(net_t * pNet);
 net_t netCopyToGPU(const net_t * hNet);
