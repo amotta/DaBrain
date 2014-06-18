@@ -17,8 +17,10 @@ CFLAGS += -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes
 CFLAGS += -Wpadded -Wshadow
 CFLAGS += -std=c99
 CFLAGS += -O2
+CFLAGS += -g
 
-NVCCFLAGS = -arch=sm_20
+NVCCFLAGS  = -arch=sm_20
+NVCCFLAGS += -g
 
 # Libraries
 LIBS = -lcudart -lcublas -lcsv
