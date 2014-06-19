@@ -28,9 +28,9 @@ typedef struct {
 } net_t;
 
 int netNew(net_t * pNet);
+int netToGPU(net_t * gpuNet);
 void netInit(net_t * pNet);
-void netUpdate(net_t * pNet);
-net_t netCopyToGPU(const net_t * hNet);
+int netUpdate(net_t * pNet);
 int netRead(
 	net_t * pNet,
 	const char * dynParamFile,

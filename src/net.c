@@ -53,21 +53,100 @@ int netNew(net_t * pNet){
 	return 0;
 }
 
-void netUpdateCurrent(net_t * pNet){
-	/*
-	** TODO
-	** change to banded matrix multiplication
-	*/
-	gpuMultiplyMV(
-		pNet->syn,
-		pNet->numNeurons,
-		pNet->numNeurons,
-		(const float *) pNet->firing, 1,
-		pNet->Isyn, 1
+int netToGPU(net_t * gpuNet){
+	// neuronal parameters
+	const float * dynParam = NULL;
+	gpuCopyMemoryToGPU(
+		(const void *) gpuNet->dynParam,
+		(void **) &dynParam,
+		gpuNet->numNeurons * DYN_PARAM_LEN * sizeof(float)
 	);
+	if(!dynParam){
+		printf("Could not copy neuron parameters to GPU.\n");
+		return -1;
+	}
+
+	// neuronal state
+	float * dynState = NULL;
+	gpuCopyMemoryToGPU(
+		(const void *) gpuNet->dynState,
+		(void **) &dynState,
+		gpuNet->numNeurons * DYN_STATE_LEN * sizeof(float)
+	);
+	if(!dynState){
+		printf("Could not copy neuron states to GPU.\n");
+		return -1;
+	}
+
+	float * firing = NULL;
+	gpuCopyMemoryToGPU(
+		(const void *) gpuNet->firing,
+		(void **) &firing,
+		gpuNet->numNeurons * sizeof(float)
+	);
+	if(!firing){
+		printf("Could not copy firing vector to GPU.\n");
+		return -1;
+	}
+
+	float * Isyn = NULL;
+	gpuCopyMemoryToGPU(
+		(const void *) gpuNet->Isyn,
+		(void **) &Isyn,
+		gpuNet->numNeurons * sizeof(float)
+	);
+	if(!Isyn){
+		printf("Could not copy synaptic currents to GPU.\n");
+		return -1;
+	}
+
+	const float * syn = NULL;
+	size_t synRows = gpuNet->synSuper + 1 + gpuNet->synSub;
+	size_t synCols = gpuNet->numNeurons;
+	gpuCopyMemoryToGPU(
+		(const void *) gpuNet->syn,
+		(void **) &syn,
+		synRows * synCols * sizeof(float)
+	);
+	if(!syn){
+		printf("Could not copy synapse matrix to GPU.\n");
+		return -1;
+	}
+
+	// write back
+	gpuNet->dynParam = dynParam;
+	gpuNet->dynState = dynState;
+	gpuNet->firing = firing;
+	gpuNet->Isyn = Isyn;
+	gpuNet->syn = syn;
+
+	return 0;
 }
 
-void netUpdateState(net_t * pNet){
+int netUpdateCurrent(net_t * pNet){
+	int error;
+	error = gpuMultiplyBMV(
+		// synapse matrix
+		pNet->syn,
+		pNet->synSuper + 1 + pNet->synSub,
+		pNet->numNeurons,
+		pNet->synSuper,
+		pNet->synSub,
+		// firing vector
+		pNet->firing, 1,
+		// synaptic current vector
+		pNet->Isyn, 1
+	);
+
+	if(error){
+		printf("Could not update synaptic currents.\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+int netUpdateState(net_t * pNet){
 	gpuUpdateState(
 		pNet->numNeurons,
 		pNet->dynState,
@@ -75,62 +154,20 @@ void netUpdateState(net_t * pNet){
 		pNet->dynParam,
 		pNet->Isyn
 	);
+
+	return 0;
 }
 
-void netUpdate(net_t * pNet){
-	netUpdateCurrent(pNet);
-	netUpdateState(pNet);
-}
+int netUpdate(net_t * pNet){
+	int error;
 
-net_t netCopyToGPU(const net_t * hNet){
-	const float * dynParam = NULL;
-	gpuCopyMemoryToGPU(
-		(const void *) hNet->dynParam,
-		(void **) &dynParam,
-		hNet->numNeurons * DYN_PARAM_LEN * sizeof(float)
-	);
+	error = netUpdateCurrent(pNet);
+	if(error) return error;
 
-	float * dynState = NULL;
-	gpuCopyMemoryToGPU(
-		(const void *) hNet->dynState,
-		(void **) &dynState,
-		hNet->numNeurons * DYN_STATE_LEN * sizeof(float)
-	);
+	error = netUpdateState(pNet);
+	if(error) return error;
 
-	float * firing = NULL;
-	gpuCopyMemoryToGPU(
-		(const void *) hNet->firing,
-		(void **) &firing,
-		hNet->numNeurons * sizeof(float)
-	);
-
-	float * Isyn = NULL;
-	gpuCopyMemoryToGPU(
-		(const void *) hNet->Isyn,
-		(void **) &Isyn,
-		hNet->numNeurons * sizeof(float)
-	);
-
-	const float * syn = NULL;
-	size_t synRows = hNet->synSuper + 1 + hNet->synSub;
-	size_t synCols = hNet->numNeurons;
-	gpuCopyMemoryToGPU(
-		(const void *) hNet->syn,
-		(void **) &syn,
-		synRows * synCols * sizeof(float)
-	);
-
-	net_t dNet = {
-		.numNeurons = hNet->numNeurons,
-		.t = hNet->t,
-		.dynParam = dynParam,
-		.dynState = dynState,
-		.firing = firing,
-		.Isyn = Isyn,
-		.syn = syn
-	};
-
-	return dNet;
+	return 0;
 }
 
 int netRead(
