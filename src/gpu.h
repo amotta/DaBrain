@@ -7,7 +7,18 @@ extern "C" {
 
 void gpuCopyMemoryToGPU(const void * hPtr, void ** dPtr, size_t size);
 void gpuCopyMemoryFromGPU(const void * dPtr, void * hPtr, size_t size);
-void gpuMultiplyMV(
+int gpuMultiplyBMV(
+	const float * mat,
+	int matRows,
+	int matCols,
+	int matSuper,
+	int matSub,
+	const float * vecIn,
+	int vecInStride,
+	float * vecOut,
+	int vecOutStride
+);
+int gpuMultiplyMV(
 	const float * mat,
 	int matRows,
 	int matCols,

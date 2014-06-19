@@ -9,8 +9,6 @@
 typedef struct {
 	// number of neurons
 	const int numNeurons;
-	// count of excitatory neurons
-	const int numExc; 
 	// time
 	int t;
 	// neuron dynamics parameter
@@ -22,12 +20,29 @@ typedef struct {
 	// synaptic current
 	float * Isyn;
 	// synapse matrix
-	const float * S;
+	const float * syn;
+	// number of superdiagonals
+	const int synSuper;
+	// number of subdiagonals
+	const int synSub;
 } net_t;
 
-void netNew(net_t * pNet);
+int netNew(net_t * pNet);
+int netToGPU(net_t * gpuNet);
 void netInit(net_t * pNet);
-void netUpdate(net_t * pNet);
-net_t netCopyToGPU(const net_t * hNet);
-
+int netUpdate(net_t * pNet);
+int netRead(
+	net_t * pNet,
+	const char * dynParamFile,
+	const char * dynStateFile,
+	const char * synFile
+);
+int netReadSize(
+	int * pNumNeurons,
+	int * pSynSuper,
+	int * pSynSub,
+	const char * dynParamFile,
+	const char * dynStateFile,
+	const char * synFile
+);
 #endif

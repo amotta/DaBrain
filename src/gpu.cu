@@ -45,7 +45,60 @@ void gpuCopyMemoryFromGPU(const void * dPtr, void * hPtr, size_t size){
 	}
 }
 
-void gpuMultiplyMV(
+int gpuMultiplyBMV(
+	const float * mat,
+	int matRows,
+	int matCols,
+	int matSuper,
+	int matSub,
+	const float * vecIn,
+	int vecInStride,
+	float * vecOut,
+	int vecOutStride
+){
+	if(!ready){
+		gpuInit();
+	}
+
+	const float alpha = 1.0f;
+	const float beta = 0.0f;
+
+	cublasStatus_t status;
+	status = cublasSgbmv(
+		handle,
+		// no transformation
+		CUBLAS_OP_N,
+		// matrix dimensions
+		matRows, matCols,
+		// lower and upper diagonals
+		matSub, matSuper,
+		// alpha
+		&alpha,
+		// matrix
+		mat,
+		// leading dimension of matrix
+		matRows,
+		// vector
+		vecIn,
+		// vector stride
+		vecInStride,
+		// beta
+		&beta,
+		// output
+		vecOut,
+		// output stride
+		vecOutStride
+	);
+
+	if(status != CUBLAS_STATUS_SUCCESS){
+		printf("Error in banded matrix vector multiplication.\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+int gpuMultiplyMV(
 	const float * mat,
 	int matRows,
 	int matCols,
@@ -88,8 +141,10 @@ void gpuMultiplyMV(
 
 	if(status != CUBLAS_STATUS_SUCCESS){
 		printf("Error in matrix vector multiplication\n");
-		return;
+		return -1;
 	}
+
+	return 0;
 }
 
 __global__ void updateState(
