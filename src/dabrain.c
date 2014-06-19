@@ -1,64 +1,122 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include "gpu.h"
 #include "log.h"
 #include "net.h"
 
-void usage(){
-	printf("dabrain [options] numNeurons\n");
-}
+static const char * dynParamFile = "dynParam.csv";
+static const char * dynStateFile = "dynState.csv";
+static const char * synFile = "syn.csv";
 
 int main(int argc, char ** argv){
-	if(argc < 2){
-		usage();
-		return EXIT_SUCCESS;
-	}
+	int error;
 
-	// read number of neurons
-	int numNeurons = (int) strtol(argv[1], NULL, 10);
-	int numExc = (int) (0.8 * numNeurons);
+	// check CSV files
+	printf("Analyse CSV files... ");
+	fflush(stdout);
 
+	int numNeurons;
+	int synSuper;
+	int synSub;
+	error = netReadSize(
+		&numNeurons,
+		&synSuper,
+		&synSub,
+		dynParamFile,
+		dynStateFile,
+		synFile
+	);
+	if(error) return EXIT_FAILURE;
+
+	printf("done\n");
+	printf(
+		"> Number of neurons: %d\n"
+		"> Number of synapses per neuron: %d\n",
+		numNeurons,
+		synSuper + 1 + synSub
+	);
+
+	// create new network
 	net_t net = {
 		.numNeurons = numNeurons,
-		.numExc = numExc
+		.synSuper = synSuper,
+		.synSub = synSub
 	};
-
 	netNew(&net);
-	netInit(&net);
-	printf("Net build\n");
-	printf("Size: %d\n", net.numNeurons);
 
-	// copy to gpu
-	net_t dNet = netCopyToGPU(&net);
+	// load network from CSV files
+	printf("Loading CSV files... ");
+	fflush(stdout);
+
+	error = netRead(
+		&net,
+		dynParamFile,
+		dynStateFile,
+		synFile
+	);
+	if(error) return EXIT_FAILURE;
+
+	printf("done\n");
+
+	// copy to GPU
+	printf("Copying data to GPU... ");
+	fflush(stdout);
+
+	net_t gpuNet = net;
+	error = netToGPU(&gpuNet);
+	if(error){
+		printf("Failed to copy network to GPU.\n");
+		return EXIT_FAILURE;
+	}
+
+	printf("done\n");
 
 	// prepare logging
-	FILE * firingFile = fopen("firing.log", "w");
+	FILE * firingFile;
+	firingFile = fopen("firing.log", "w");
 	
-	clock_t tic = clock();
+	// prepare benchmark
+	clock_t tic;
+	clock_t toc;
 
-	while(dNet.t < 1000){
-		netUpdate(&dNet);
+	// start simulation
+	printf("Running simulation... ");
+	fflush(stdout);
+
+	tic = clock();
+	while(net.t < 1000){
+		error = netUpdate(&gpuNet);
+		if(error){
+			printf("Error while updating network.\n");
+			printf("Abort simulation.\n");
+			break;
+		}
 
 		// update clock
 		net.t++;
-		dNet.t++;
+		gpuNet.t++;
 
 		// copy firing neurons to host
 		gpuCopyMemoryFromGPU(
-			dNet.firing,
+			gpuNet.firing,
 			net.firing,
-			(size_t) net.numNeurons * sizeof(float)
+			net.numNeurons * sizeof(float)
 		);
 		logFiring(&net, firingFile);
 	}
+	toc = clock();
 
-	clock_t toc = clock();
+	// show stats
+	printf("done\n");
+	printf(
+		"> Duration: %f\n",
+		(float) (toc - tic) / CLOCKS_PER_SEC
+	);
 
 	// end logging
 	fclose(firingFile);
 
-	printf("Net updated\n");
-	printf("Time elapsed: %f\n", (double) (toc - tic) / CLOCKS_PER_SEC);	
 	return EXIT_SUCCESS;
 }
