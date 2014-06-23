@@ -24,7 +24,7 @@ c = [-65 + 15 * re .^ 2;        -65 * ones(Ni,1)];
 d = [8 - 6 * re .^ 2;           2 * ones(Ni,1)];
 
 % Synapse matrix
-S = [0.5 * rand(Ne + Ni, Ne),   -rand(Ne + Ni, Ni)];
+S = [0.5 * rand(Ne + Ni, Ne),   -1.2 * rand(Ne + Ni, Ni)];
 
 % Initial membrane voltage
 v = -65 * ones(Ne + Ni, 1);
@@ -40,5 +40,32 @@ dynState = [v'; u'];
 csvwrite('dynState.csv', dynState);
 
 %%
-% TODO
-% Clean up code for simulation
+% Simulation
+fired = [];
+firings = [];
+I = zeros(Ne + Ni, 1);
+Isyn = zeros(Ne + Ni, 1);
+Ithal = zeros(Ne + Ni, 1);
+
+for t = 1 : 1000
+    % find firing neurons
+    fired = find(v >= 30);
+    firings = [firings; t + 0 * fired, fired];
+    
+    % reset firing neurons
+    v(fired) = c(fired);
+    u(fired) = u(fired) + d(fired);
+    
+    % compute current
+    Isyn = sum(S( : , fired), 2);
+    Ithal = [5 * randn(Ne, 1); 2 * randn(Ni, 1)];
+    I = Isyn + Ithal;
+    
+    % update state
+    v = v + 0.5 * (0.04 * v .^ 2 + 5 * v + 140 - u + I);
+    v = v + 0.5 * (0.04 * v .^ 2 + 5 * v + 140 - u + I);
+    u = u + a .* (b .* v - u);
+end
+
+% plot firing neurons
+plot(firings( : , 1), firings( : , 2), '.');
