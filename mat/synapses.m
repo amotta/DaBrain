@@ -6,9 +6,9 @@
 % number of neurons
 n = 1000;
 % number of upper diagonals
-ku = 20;
+ku = 50;
 % number of lower diagonals
-kl = 20;
+kl = 50;
 
 % banded synapse matrix
 bS = zeros(ku + kl + 1, n);
@@ -29,4 +29,4 @@ for i = (ku + 2):(ku + kl + 1)
 	bS(i, : ) = [pre, suf];
 end
 
-csvwrite('bandedS.csv',bS)
+csvwrite('syn.csv',bS)
