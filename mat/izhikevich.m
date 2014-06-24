@@ -7,7 +7,7 @@
 clear all
 rng(0,'CombRecursive')
 
-f=1;
+f = 1;
 
 % Excitatory neurons            Inhibitory neurons
 % Number of different neurons
@@ -24,7 +24,7 @@ c = [-65 + 15 * re .^ 2;        -65 * ones(Ni,1)];
 d = [8 - 6 * re .^ 2;           2 * ones(Ni,1)];
 
 % Synapse matrix
-S = [0.5 * rand(Ne + Ni, Ne),   -1.2 * rand(Ne + Ni, Ni)];
+S = [0.5 * rand(Ne + Ni, Ne),   -1 * rand(Ne + Ni, Ni)];
 
 % Initial membrane voltage
 v = -65 * ones(Ne + Ni, 1);
