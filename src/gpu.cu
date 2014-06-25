@@ -165,15 +165,28 @@ __global__ void updateState(
 	float * nDynState = &dynState[DYN_STATE_LEN * nId];
 	const float * nDynParam = &dynParam[DYN_PARAM_LEN * nId];
 
+	// current state
 	float v = nDynState[DYN_STATE_V];
-	float u = nDynState[DYN_STATE_U];
+	float n = nDynState[DYN_STATE_N];
+	float m = nDynState[DYN_STATE_M];
+	float h = nDynState[DYN_STATE_H];
+
+	// K channels
+	const float gK = nDynParam[DYN_PARAM_GK];
+	const float vK = 0;
+
+	// Na channels
+	const float gNa = nDynParam[DYN_PARAM_GNA];
+	const float vNa = 0;
+
+	// leakage
+	const float gL = nDynParam[DYN_PARAM_GL];
+	const float vL = 0;
+
 	// synaptic current + thalamic input
 	float I = Isyn[nId] + 5.0f;
 
 	if(v >= 30.0f){
-		v = nDynParam[DYN_PARAM_C];
-		u = u + nDynParam[DYN_PARAM_D];
-
 		// neuron is firing
 		firing[nId] = 1.0f;
 	}else{
@@ -181,6 +194,19 @@ __global__ void updateState(
 		firing[nId] = 0.0f;
 	}
 
+	for(int i = 0; i < 2; i++){
+		v += 0.5f / nDynParam[DYN_PARAM_CM] * (
+			I
+			- gK * n * n * n * n * (v - vK)
+			- gNa * m * m * m * h * (v - vNa)
+			- gL * (v - vL) 
+		);
+		n += 0.5f * (
+			0.01f * (v - 10) / (expf((v - 10) / 10)) - 1) * (1 - n)
+			- 0.125f * expf(v / 80) * n
+		);
+
+	}
 	// update state
 	v += 0.5f * (0.04f * v * v + 5.0f * v + 140 - u + I);
 	v += 0.5f * (0.04f * v * v + 5.0f * v + 140 - u + I);
