@@ -188,15 +188,30 @@ __global__ void updateState(
 }
 
 #define BLOCK_SIZE (32 * 32)
-void gpuUpdateState(
+int gpuUpdateState(
 	int numNeurons,
 	float * dynState,
 	float * firing,
 	const float * dynParam,
 	const float * Isyn
 ){
+	// reset CUDA error
+	cudaGetLastError();
+
+	// update neurons
 	dim3 threads(BLOCK_SIZE);
 	dim3 grid((int) ceil((double) numNeurons / BLOCK_SIZE));
-
 	updateState<<<grid, threads>>>(dynState, firing, dynParam, Isyn);
+
+	// check for error
+	cudaError_t error;
+	error = cudaGetLastError();
+
+	if(error != cudaSuccess){
+		printf("Could not update neuron states. Error:\n");
+		printf("%s", cudaGetErrorString(error));
+		return -1;
+	}
+
+	return 0;
 }

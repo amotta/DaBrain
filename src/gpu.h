@@ -27,7 +27,7 @@ int gpuMultiplyMV(
 	float * vecOut,
 	int vecOutStride
 );
-void gpuUpdateState(
+int gpuUpdateState(
 	int numNeurons,
 	float * dynState,
 	float * firing,

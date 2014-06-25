@@ -147,7 +147,8 @@ int netUpdateCurrent(net_t * pNet){
 }
 
 int netUpdateState(net_t * pNet){
-	gpuUpdateState(
+	int error;
+	error = gpuUpdateState(
 		pNet->numNeurons,
 		pNet->dynState,
 		pNet->firing,
@@ -155,7 +156,7 @@ int netUpdateState(net_t * pNet){
 		pNet->Isyn
 	);
 
-	return 0;
+	return error;
 }
 
 int netUpdate(net_t * pNet){
