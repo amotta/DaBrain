@@ -78,7 +78,7 @@ int gpuMultiplyBMV(
 		// matrix
 		mat,
 		// leading dimension of matrix
-		matRows,
+		matSuper + 1 + matSub,
 		// vector
 		vecIn,
 		// vector stride
@@ -214,9 +214,7 @@ int gpuUpdateState(
 	);
 
 	// check for error
-	cudaError_t error;
-	error = cudaGetLastError();
-
+	cudaError_t error = cudaGetLastError();
 	if(error != cudaSuccess){
 		printf("Could not update neuron states. Error:\n");
 		printf("%s", cudaGetErrorString(error));

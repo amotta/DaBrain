@@ -128,7 +128,7 @@ int netUpdateCurrent(net_t * pNet){
 	error = gpuMultiplyBMV(
 		// synapse matrix
 		pNet->syn,
-		pNet->synSuper + 1 + pNet->synSub,
+		pNet->numNeurons,
 		pNet->numNeurons,
 		pNet->synSuper,
 		pNet->synSub,
