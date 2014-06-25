@@ -149,6 +149,7 @@ int gpuMultiplyMV(
 }
 
 __global__ void updateState(
+	int numNeurons,
 	float * dynState,
 	float * firing,
 	const float * dynParam,
@@ -156,6 +157,9 @@ __global__ void updateState(
 ){
 	// neuron id
 	int nId = blockDim.x * blockIdx.x + threadIdx.x;
+
+	// let's not exaggerate
+	if(nId >= numNeurons) return;
 
 	// pointer to corresponding column
 	float * nDynState = &dynState[DYN_STATE_LEN * nId];
@@ -201,7 +205,13 @@ int gpuUpdateState(
 	// update neurons
 	dim3 threads(BLOCK_SIZE);
 	dim3 grid((int) ceil((double) numNeurons / BLOCK_SIZE));
-	updateState<<<grid, threads>>>(dynState, firing, dynParam, Isyn);
+	updateState<<<grid, threads>>>(
+		numNeurons,
+		dynState,
+		firing,
+		dynParam,
+		Isyn
+	);
 
 	// check for error
 	cudaError_t error;
