@@ -4,53 +4,52 @@
 %
 % Modified by Alessandro Motta and Hugo Zeberg
 
-clear all
-rng(0,'CombRecursive')
+%% Import CSV files
+clear all;
+load('dynParam.csv');
+a = dynParam(1, : )';
+b = dynParam(2, : )';
+c = dynParam(3, : )';
+d = dynParam(4, : )';
 
-f = 1;
+load('dynState.csv');
+v = dynState(1, : )';
+u = dynState(2, : )';
 
-% Excitatory neurons            Inhibitory neurons
-% Number of different neurons
-Ne = 800 * f;                   Ni = 200 * f;
-% Random number to differentiate neurons
-re = rand(Ne, 1);               ri = rand(Ni, 1);
+load('syn.csv');
+synRows = size(syn, 1);
+N = size(syn, 2);
+ku = (synRows - 1) / 2;
+kl = (synRows - 1) / 2;
 
-% Neuronal parameters
-a = [0.02 * ones(Ne,1);         0.02 + 0.08 * ri];
-b = [0.2 * ones(Ne,1);          0.25 - 0.05 * ri];
-% Membrane voltage reset
-c = [-65 + 15 * re .^ 2;        -65 * ones(Ni,1)];
-% Recovery variable reset
-d = [8 - 6 * re .^ 2;           2 * ones(Ni,1)];
+S = zeros(N);
 
-% Synapse matrix
-S = [0.5 * rand(Ne + Ni, Ne),   -1 * rand(Ne + Ni, Ni)];
+% copy upper diagonals
+for k = 1 : ku
+    S = S + diag(syn(ku + 1 - k, (k + 1) : end), k);
+end
 
-% Initial membrane voltage
-v = -65 * ones(Ne + Ni, 1);
-% Initial recovery value
-u = b .* v;
+for k = 1:kl
+    S = S + diag(syn(ku + 1 + k, 1 : (end - k)), -k);
+end
 
-%%
-% Write data to CSV files
-dynParam = [a'; b'; c'; d'];
-csvwrite('dynParam.csv', dynParam);
+clear dynState;
+clear dynParam;
+clear syn;
 
-dynState = [v'; u'];
-csvwrite('dynState.csv', dynState);
-
-%%
-% Simulation
+%% Simulation
 fired = [];
 firings = [];
-I = zeros(Ne + Ni, 1);
-Isyn = zeros(Ne + Ni, 1);
-Ithal = zeros(Ne + Ni, 1);
+I = zeros(N, 1);
+Isyn = zeros(N, 1);
+Ithal = 5 * ones(N, 1);
 
 for t = 1 : 1000
     % find firing neurons
     fired = find(v >= 30);
     firings = [firings; t + 0 * fired, fired];
+    
+    % Isyn = S * (v >= 30);
     
     % reset firing neurons
     v(fired) = c(fired);
@@ -58,7 +57,6 @@ for t = 1 : 1000
     
     % compute current
     Isyn = sum(S( : , fired), 2);
-    Ithal = [5 * randn(Ne, 1); 2 * randn(Ni, 1)];
     I = Isyn + Ithal;
     
     % update state
@@ -67,5 +65,7 @@ for t = 1 : 1000
     u = u + a .* (b .* v - u);
 end
 
-% plot firing neurons
+%% Plot firing
+figure;
 plot(firings( : , 1), firings( : , 2), '.');
+title('Neuron firing MatLab');
