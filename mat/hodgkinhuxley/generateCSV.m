@@ -1,12 +1,12 @@
 % Generating all CSV files
 
 % Thousands of neurons
-f = 1; 
+f = 0.1; 
 % Proportion of inhibitory neurons
 pInh = 0.0;
 % Upper and lower diagonals
-ku = 100;
-kl = 100;
+ku = 10;
+kl = 10;
 
 N = round(f * 1000);
 Ni = round(pInh * N);
@@ -19,31 +19,37 @@ posI = round(linspace(1, N, Ni));
 r = rand(N, 1);
 ri = rand(Ni, 1);
 
-% Neuronal parameters
-a = 0.02 * ones(N, 1);
-a(posI) = 0.02 + 0.08 * ri;
-
-b = 0.2 * ones(N, 1);
-b(posI) = 0.25 - 0.05 * ri;
-
-% Membrane voltage reset
-c = -65 + 15 * r .^ 2;
-c(posI) = -65 * ones(Ni, 1);
-
-% Recovery variable reset
-d = 8 - 6 * r .^ 2;
-d(posI) = 2 * ones(Ni, 1);
+% K conductance
+gK = 36 * (0.95 + 0.1 * r);
+% Na conductance
+gNa = 120 * (0.95 + 0.1 * r);
+% Leakage
+gL = 0.3 * (0.95 + 0.1 * r);
 
 % Write data to CSV files
-dynParam = [a'; b'; c'; d'];
+dynParam = [gK'; gNa'; gL'];
 csvwrite('dynParam.csv', dynParam);
 
 % Initial membrane voltage
-v = -65 * ones(N, 1);
-% Initial recovery value
-u = b .* v;
+vZero = zeros(N, 1);
 
-dynState = [v'; u'];
+% K activation
+nAlphaZero = 0.01 * 10 / (exp(10 / 10) - 1);
+nBetaZero = 0.125;
+nZero = nAlphaZero / (nAlphaZero + nBetaZero) * ones(N, 1);
+
+% Na activation
+mAlphaZero = 0.1 * 25 / (exp(25 / 10) - 1);
+mBetaZero = 4;
+mZero = mAlphaZero / (mAlphaZero + mBetaZero) * ones(N, 1);
+
+% Na inactivation
+hAlphaZero = 0.07;
+hBetaZero = 1 / (exp(30 / 10) + 1);
+hZero = hAlphaZero / (hAlphaZero + hBetaZero) * ones(N, 1);
+
+% Save initial states
+dynState = [vZero'; nZero'; mZero'; hZero'];
 csvwrite('dynState.csv', dynState);
 
 % banded synapse matrix
@@ -51,7 +57,6 @@ bS = zeros(ku + kl + 1, N);
 
 % upper diagonals
 for i = 1 : ku
-    i
 	piv = (ku + 1) - i;
 	pre = zeros(1, piv);
 	suf = (i / ku ) * rand(1, N - piv);
@@ -60,7 +65,6 @@ end
 
 % lower diagonals
 for i = (ku + 2) : (ku + kl + 1)
-    i
 	piv = i - (ku + 1);
 	pre = (kl + 1 - piv) / kl * rand(1, N - piv);
 	suf = zeros(1, piv);
