@@ -2,8 +2,6 @@
 #define NEURON_H
 
 enum DYN_PARAM {
-	// membrane capacitance
-	DYN_PARAM_CM,
 	// maximum conductance for
 	// K channels
 	DYN_PARAM_GK,

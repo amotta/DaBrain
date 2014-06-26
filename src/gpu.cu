@@ -171,50 +171,72 @@ __global__ void updateState(
 	float m = nDynState[DYN_STATE_M];
 	float h = nDynState[DYN_STATE_H];
 
+	/*
+	** Source:
+	** Taken from Gerstner's homepage and
+	** Arhem's Berkley Madonna simulation.
+	*/
+
 	// K channels
 	const float gK = nDynParam[DYN_PARAM_GK];
-	const float vK = 0;
+	const float vK = -12.0f;
 
 	// Na channels
 	const float gNa = nDynParam[DYN_PARAM_GNA];
-	const float vNa = 0;
+	const float vNa = 115.0f;
 
 	// leakage
 	const float gL = nDynParam[DYN_PARAM_GL];
-	const float vL = 0;
+	const float vL = 10.6f;
 
 	// synaptic current + thalamic input
-	float I = Isyn[nId] + 5.0f;
+	float I = Isyn[nId] + 7.0f;
 
-	if(v >= 30.0f){
-		// neuron is firing
-		firing[nId] = 1.0f;
-	}else{
-		// not firing
-		firing[nId] = 0.0f;
-	}
-
-	for(int i = 0; i < 2; i++){
-		v += 0.5f / nDynParam[DYN_PARAM_CM] * (
+	float aboveThresh = false;
+	for(int i = 0; i < 1000; i++){
+		// membrane voltage
+		v += 0.001f * (
 			I
 			- gK * n * n * n * n * (v - vK)
 			- gNa * m * m * m * h * (v - vNa)
 			- gL * (v - vL) 
 		);
-		n += 0.5f * (
-			0.01f * (v - 10) / (expf((v - 10) / 10)) - 1) * (1 - n)
-			- 0.125f * expf(v / 80) * n
+
+		if(v >= 50.0f){
+			aboveThresh = true;
+		}
+
+		// K activation
+		n += 0.001f * (
+			0.01f * (10 - v) / (expf((10 - v) / 10) - 1) * (1 - n)
+			- 0.125f * expf(-v / 80) * n
 		);
 
-	}
-	// update state
-	v += 0.5f * (0.04f * v * v + 5.0f * v + 140 - u + I);
-	v += 0.5f * (0.04f * v * v + 5.0f * v + 140 - u + I);
-	u += nDynParam[DYN_PARAM_A] * (nDynParam[DYN_PARAM_B] * v - u);
+		// Na activation
+		m += 0.001f * (
+			0.1f * (25 - v) / (expf((25 - v) / 10) - 1) * (1 - m)
+			- 4 * expf(-v / 18) * m
+		);
 
-	// write result
+		// Na inactivation
+		h += 0.001f * (
+			0.07f * expf(-v / 20) * (1 - h)
+			- 1 / (expf((30 - v) / 10) + 1) * h
+		);
+	}
+
+	// write back dynamics state
 	nDynState[DYN_STATE_V] = v;
-	nDynState[DYN_STATE_U] = u;
+	nDynState[DYN_STATE_N] = n;
+	nDynState[DYN_STATE_M] = m;
+	nDynState[DYN_STATE_H] = h;
+
+	// write firing
+	if(aboveThresh){
+		firing[nId] = 1.0f;
+	}else{
+		firing[nId] = 0.0f;
+	}
 }
 
 #define BLOCK_SIZE (32 * 32)
