@@ -148,6 +148,27 @@ int gpuMultiplyMV(
 	return 0;
 }
 
+// Faraday constant (C / mol)
+#define C_F 96485.34f
+// ideal gas constant (V C / K mol)
+#define C_R 8.31446f
+// temperature (K)
+#define C_T 295.0f
+// xi
+#define C_xi (96485.34f / (8.31446f * 295.0f))
+// internal Na concentration (mol)
+#define C_cNaI 0.014f
+// external Na concentration (mol)
+#define C_cNaO 0.1145f
+// internal K concentration (mol)
+#define C_cKI 0.120f
+// external K concentration (mol)
+#define C_cKO 0.0025f
+// leakage reversal potential (V)
+#define C_eL -0.070f
+// membrane capacitance (F / m^2)
+#define C_Cm 0.070f
+
 __global__ void updateState(
 	int numNeurons,
 	float * dynState,
@@ -167,69 +188,89 @@ __global__ void updateState(
 
 	// current state
 	float v = nDynState[DYN_STATE_V];
-	float n = nDynState[DYN_STATE_N];
 	float m = nDynState[DYN_STATE_M];
 	float h = nDynState[DYN_STATE_H];
+	float n = nDynState[DYN_STATE_N];
 
-	/*
-	** Source:
-	** Taken from Gerstner's homepage and
-	** Arhem's Berkley Madonna simulation.
-	*/
+	// parameters
+	float gL = nDynParam[DYN_PARAM_GL];
+	float pNa = nDynParam[DYN_PARAM_PNA];
+	float pK = nDynParam[DYN_PARAM_PK];
 
-	// K channels
-	const float gK = nDynParam[DYN_PARAM_GK];
-	const float vK = -12.0f;
-
-	// Na channels
-	const float gNa = nDynParam[DYN_PARAM_GNA];
-	const float vNa = 115.0f;
-
-	// leakage
-	const float gL = nDynParam[DYN_PARAM_GL];
-	const float vL = 10.6f;
-
-	// synaptic current + thalamic input
-	float I = Isyn[nId] + 7.0f;
+	// stimulation current
+	// float Istim = Isyn[nId] + 65.0f;
+	// stimulation current (A / m^2)
+	float Istim = 0.060f;
 
 	float aboveThresh = false;
-	for(int i = 0; i < 1000; i++){
-		// membrane voltage
-		v += 0.001f * (
-			I
-			- gK * n * n * n * n * (v - vK)
-			- gNa * m * m * m * h * (v - vNa)
-			- gL * (v - vL) 
-		);
+	for(int i = 0; i < 1; i++){
+		float expVal = expf(v * C_xi);
 
-		if(v >= 50.0f){
-			aboveThresh = true;
+		// leakage current
+		float Il = 0; // gL * (v - C_eL);
+
+		// Na current
+		float goldNa = (C_cNaO - C_cNaI * expVal) / (1 - expVal);
+		float Ina = C_F * C_xi * m * m * h * pNa * v * goldNa;
+
+		// K current
+		float goldK = (C_cKO - C_cKI * expVal) / (1 - expVal);
+		float Ik = C_F * C_xi * n * n * pK * v * goldK;
+
+		float dv = 0.001f / C_Cm * (Istim - Ina - Ik - Il);
+
+		if(nId == 1){
+			printf("expVal = %f\n", expVal);
+			printf("Il = %f\n", Il);
+			printf("goldNa = %f\n", goldNa);
+			printf("Ina = %f\n", Ina);
+			printf("goldK = %f\n", goldK);
+			printf("Ik = %f\n", Ik);
+			printf("dv = %f\n", dv);
 		}
 
-		// K activation
-		n += 0.001f * (
-			0.01f * (10 - v) / (expf((10 - v) / 10) - 1) * (1 - n)
-			- 0.125f * expf(-v / 80) * n
-		);
+		// membrane voltage
+		v += dv;
 
 		// Na activation
 		m += 0.001f * (
-			0.1f * (25 - v) / (expf((25 - v) / 10) - 1) * (1 - m)
-			- 4 * expf(-v / 18) * m
+			(1 - m) * 60000 * (v + 0.033f)
+			/ (1 - expf(-(v + 0.033f) / 0.003f))
+			+ m * 70000 * (v + 0.042f)
+			/ (1 - expf((v + 0.042f) / 0.02f))
 		);
 
 		// Na inactivation
 		h += 0.001f * (
-			0.07f * expf(-v / 20) * (1 - h)
-			- 1 / (expf((30 - v) / 10) + 1) * h
+			- (1 - h) * 50000 * (v + 0.065f)
+			/ (1 - expf((v + 0.065f) / 0.006f))
+			- h * 2250
+			/ (1 + expf(-(v + 0.01f) / 0.01f))
 		);
+
+		// K activation
+		n += 0.001f * (
+			(1 - n) * 16000 * (v + 0.01f)
+			/ (1 - expf(-(v + 0.01f) / 0.01f))
+			+ n * 40000 * (v + 0.035f)
+			/ (1 - expf((v + 0.035f) / 0.01f))
+		);
+
+		// check for action potential
+		if(v >= 50.0f){
+			aboveThresh = true;
+		}
+	}
+
+	if(nId == 1){
+		printf("%f %f %f %f\n", v, m, h, n);
 	}
 
 	// write back dynamics state
 	nDynState[DYN_STATE_V] = v;
-	nDynState[DYN_STATE_N] = n;
 	nDynState[DYN_STATE_M] = m;
 	nDynState[DYN_STATE_H] = h;
+	nDynState[DYN_STATE_N] = n;
 
 	// write firing
 	if(aboveThresh){
@@ -239,7 +280,7 @@ __global__ void updateState(
 	}
 }
 
-#define BLOCK_SIZE (32 * 32)
+#define BLOCK_SIZE (16 * 32)
 int gpuUpdateState(
 	int numNeurons,
 	float * dynState,
