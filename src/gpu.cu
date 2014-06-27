@@ -156,18 +156,20 @@ int gpuMultiplyMV(
 #define C_T 295.0f
 // xi
 #define C_xi (96485.34f / (8.31446f * 295.0f))
-// internal Na concentration (mol)
-#define C_cNaI 0.014f
-// external Na concentration (mol)
-#define C_cNaO 0.1145f
-// internal K concentration (mol)
-#define C_cKI 0.120f
-// external K concentration (mol)
-#define C_cKO 0.0025f
+// internal Na concentration (mol / m^3)
+#define C_cNaI 14.0f
+// external Na concentration (mol / m^3)
+#define C_cNaO 114.0f
+// internal K concentration (mol / m^3)
+#define C_cKI 120.0f
+// external K concentration (mol / m^3)
+#define C_cKO 2.5f
 // leakage reversal potential (V)
-#define C_eL -0.070f
+#define C_eL -70e-3f
 // membrane capacitance (F / m^2)
-#define C_Cm 0.070f
+#define C_Cm 7e-12f
+// membrane area (C / mol)
+#define C_A 100e-12f
 
 __global__ void updateState(
 	int numNeurons,
@@ -197,51 +199,41 @@ __global__ void updateState(
 	float pNa = nDynParam[DYN_PARAM_PNA];
 	float pK = nDynParam[DYN_PARAM_PK];
 
-	// stimulation current
-	// float Istim = Isyn[nId] + 65.0f;
 	// stimulation current (A / m^2)
-	float Istim = 0.060f;
+	float Istim = Isyn[nId] + 12e-12f;
 
+	float dt = 1e-6f;
 	float aboveThresh = false;
-	for(int i = 0; i < 1; i++){
+	for(int i = 0; i < 1000; i++){
 		float expVal = expf(v * C_xi);
 
 		// leakage current
-		float Il = 0; // gL * (v - C_eL);
+		float Il = gL * (v - C_eL);
 
 		// Na current
 		float goldNa = (C_cNaO - C_cNaI * expVal) / (1 - expVal);
-		float Ina = C_F * C_xi * m * m * h * pNa * v * goldNa;
+		float Ina = C_A * C_F * C_xi * m * m * h * pNa * v * goldNa;
 
 		// K current
 		float goldK = (C_cKO - C_cKI * expVal) / (1 - expVal);
-		float Ik = C_F * C_xi * n * n * pK * v * goldK;
-
-		float dv = 0.001f / C_Cm * (Istim - Ina - Ik - Il);
-
-		if(nId == 1){
-			printf("expVal = %f\n", expVal);
-			printf("Il = %f\n", Il);
-			printf("goldNa = %f\n", goldNa);
-			printf("Ina = %f\n", Ina);
-			printf("goldK = %f\n", goldK);
-			printf("Ik = %f\n", Ik);
-			printf("dv = %f\n", dv);
-		}
+		float Ik = C_A * C_F * C_xi * n * n * pK * v * goldK;
 
 		// membrane voltage
-		v += dv;
+		v += dt / C_Cm * (Istim - Ina - Ik - Il);
 
 		// Na activation
-		m += 0.001f * (
+		m += dt * (
+			// aight
 			(1 - m) * 60000 * (v + 0.033f)
 			/ (1 - expf(-(v + 0.033f) / 0.003f))
+
+			// yes!
 			+ m * 70000 * (v + 0.042f)
 			/ (1 - expf((v + 0.042f) / 0.02f))
 		);
 
 		// Na inactivation
-		h += 0.001f * (
+		h += dt * (
 			- (1 - h) * 50000 * (v + 0.065f)
 			/ (1 - expf((v + 0.065f) / 0.006f))
 			- h * 2250
@@ -249,7 +241,8 @@ __global__ void updateState(
 		);
 
 		// K activation
-		n += 0.001f * (
+		n += dt * (
+			// wumbaba
 			(1 - n) * 16000 * (v + 0.01f)
 			/ (1 - expf(-(v + 0.01f) / 0.01f))
 			+ n * 40000 * (v + 0.035f)
@@ -257,13 +250,9 @@ __global__ void updateState(
 		);
 
 		// check for action potential
-		if(v >= 50.0f){
+		if(v >= -35e-3f){
 			aboveThresh = true;
 		}
-	}
-
-	if(nId == 1){
-		printf("%f %f %f %f\n", v, m, h, n);
 	}
 
 	// write back dynamics state
