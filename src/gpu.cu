@@ -199,6 +199,9 @@ __global__ void updateState(
 	float pNa = nDynParam[DYN_PARAM_PNA];
 	float pK = nDynParam[DYN_PARAM_PK];
 
+	// total current (A / m^2)
+	float Itotal;
+
 	// transmembrane current (A / m^2)
 	float Istim = Isyn[nId];
 
@@ -227,8 +230,11 @@ __global__ void updateState(
 		float goldK = (C_cKO - C_cKI * expVal) / (1 - expVal);
 		float Ik = C_A * C_F * C_xi * n * n * pK * v * goldK;
 
+		// calculate total current
+		Itotal = Istim - Ina - Ik - Il;
+
 		// membrane voltage
-		v += dt / C_Cm * (Istim - Ina - Ik - Il);
+		v += dt / C_Cm * Itotal;
 
 		// Na activation
 		m += dt * (
@@ -266,6 +272,7 @@ __global__ void updateState(
 
 	// write back dynamics state
 	nDynState[DYN_STATE_V] = v;
+	nDynState[DYN_STATE_I] = Itotal;
 	nDynState[DYN_STATE_M] = m;
 	nDynState[DYN_STATE_H] = h;
 	nDynState[DYN_STATE_N] = n;
