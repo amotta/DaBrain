@@ -38,7 +38,7 @@ nType = 0 * (1 + 0 * r);
 nType(posI) = 1 * (1 + 0 * ri);
 
 % Write data to CSV files
-dynParam = [gL'; pNa'; pK'; nType'];
+dynParam = [gL, pNa, pK, nType];
 csvwrite('dynParam.csv', dynParam);
 
 % Membrane voltage
@@ -58,7 +58,7 @@ hZero = ones(N, 1);
 nZero = zeros(N, 1);
 
 % Save initial states
-dynState = [vZero'; iZero'; mZero'; hZero'; nZero'];
+dynState = [vZero, iZero, mZero, hZero, nZero];
 csvwrite('dynState.csv', dynState);
 
 % banded synapse matrix

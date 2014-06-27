@@ -184,20 +184,17 @@ __global__ void updateState(
 	// let's not exaggerate
 	if(nId >= numNeurons) return;
 
-	// pointer to corresponding column
-	float * nDynState = &dynState[DYN_STATE_LEN * nId];
-	const float * nDynParam = &dynParam[DYN_PARAM_LEN * nId];
-
 	// current state
-	float v = nDynState[DYN_STATE_V];
-	float m = nDynState[DYN_STATE_M];
-	float h = nDynState[DYN_STATE_H];
-	float n = nDynState[DYN_STATE_N];
+	float v = dynState[DYN_STATE_V * numNeurons + nId];
+	float m = dynState[DYN_STATE_M * numNeurons + nId];
+	float h = dynState[DYN_STATE_H * numNeurons + nId];
+	float n = dynState[DYN_STATE_N * numNeurons + nId];
 
 	// parameters
-	float gL = nDynParam[DYN_PARAM_GL];
-	float pNa = nDynParam[DYN_PARAM_PNA];
-	float pK = nDynParam[DYN_PARAM_PK];
+	float gL   = dynParam[DYN_PARAM_GL   * numNeurons + nId];
+	float pNa  = dynParam[DYN_PARAM_PNA  * numNeurons + nId];
+	float pK   = dynParam[DYN_PARAM_PK   * numNeurons + nId];
+	float type = dynParam[DYN_PARAM_TYPE * numNeurons + nId];
 
 	// total current (A / m^2)
 	float Itotal;
@@ -206,7 +203,7 @@ __global__ void updateState(
 	float Istim = Isyn[nId];
 
 	// add stimulation
-	if(nDynParam[DYN_PARAM_TYPE] < 0.5){
+	if(type < 0.5){
 		// excitatory neuron
 		Istim += 5.5e-12f;
 	}else{
@@ -271,11 +268,11 @@ __global__ void updateState(
 	}
 
 	// write back dynamics state
-	nDynState[DYN_STATE_V] = v;
-	nDynState[DYN_STATE_I] = Itotal;
-	nDynState[DYN_STATE_M] = m;
-	nDynState[DYN_STATE_H] = h;
-	nDynState[DYN_STATE_N] = n;
+	dynState[DYN_STATE_V * numNeurons + nId] = v;
+	dynState[DYN_STATE_I * numNeurons + nId] = Itotal;
+	dynState[DYN_STATE_M * numNeurons + nId] = m;
+	dynState[DYN_STATE_H * numNeurons + nId] = h;
+	dynState[DYN_STATE_N * numNeurons + nId] = n;
 
 	// write firing
 	if(aboveThresh){

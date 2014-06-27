@@ -24,7 +24,7 @@ void logCurrent(const net_t * pNet, FILE * logFile){
 
 	// log currents
 	for(int n = 0; n < pNet->numNeurons; n++){
-		fprintf(logFile, " %f", iArr[n]);
+		fprintf(logFile, " %e", iArr[n]);
 	}
 
 	// end line

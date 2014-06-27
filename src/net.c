@@ -183,8 +183,8 @@ int netRead(
 	error = ioReadMat(
 		dynParamFile,
 		(float *) pNet->dynParam,
-		DYN_PARAM_LEN,
-		pNet->numNeurons
+		pNet->numNeurons,
+		DYN_PARAM_LEN
 	);
 	if(error) return error;
 
@@ -192,8 +192,8 @@ int netRead(
 	error = ioReadMat(
 		dynStateFile,
 		pNet->dynState,
-		DYN_STATE_LEN,
-		pNet->numNeurons
+		pNet->numNeurons,
+		DYN_STATE_LEN
 	);
 	if(error) return error;
 
@@ -230,13 +230,13 @@ int netReadSize(
 	);
 
 	if(error) return error;
-	if(dynParamRows != DYN_PARAM_LEN){
-		printf("Invalid row count in %s\n", dynParamFile);
+	if(dynParamCols != DYN_PARAM_LEN){
+		printf("Invalid column count in %s\n", dynParamFile);
 		return -1;
 	}
 
 	// set number of neurons
-	const int numNeurons = dynParamCols;
+	const int numNeurons = dynParamRows;
 
 	/*
 	** check dynamics state matrix
@@ -249,12 +249,13 @@ int netReadSize(
 	);
 
 	if(error) return error;
-	if(dynStateRows != DYN_STATE_LEN){
+
+	if(dynStateRows != numNeurons){
 		printf("Invalid row count in %s\n", dynStateFile);
 		return -1;
 	}
 
-	if(dynStateCols != numNeurons){
+	if(dynStateCols != DYN_STATE_LEN){
 		printf("Invalid column count in %s\n", dynStateFile);
 		return -1;
 	}
@@ -281,7 +282,7 @@ int netReadSize(
 		return -1;
 	}
 
-	if(synapseCols != dynParamCols){
+	if(synapseCols != numNeurons){
 		printf("Invalid column count in %s\n", synapseFile);
 	}
 
