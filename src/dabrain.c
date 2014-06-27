@@ -76,6 +76,9 @@ int main(int argc, char ** argv){
 	// prepare logging
 	FILE * firingFile;
 	firingFile = fopen("firing.log", "w");
+
+	FILE * currentFile;
+	currentFile = fopen("current.log", "w");
 	
 	// prepare benchmark
 	clock_t tic;
@@ -100,11 +103,14 @@ int main(int argc, char ** argv){
 
 		// copy firing neurons to host
 		gpuCopyMemoryFromGPU(
-			gpuNet.firing,
-			net.firing,
-			net.numNeurons * sizeof(float)
+			gpuNet.dynState,
+			net.dynState,
+			2 * net.numNeurons * sizeof(float)
 		);
+
+		// logging
 		logFiring(&net, firingFile);
+		logCurrent(&net, currentFile);
 	}
 	toc = clock();
 
@@ -117,6 +123,7 @@ int main(int argc, char ** argv){
 
 	// end logging
 	fclose(firingFile);
+	fclose(currentFile);
 
 	return EXIT_SUCCESS;
 }
