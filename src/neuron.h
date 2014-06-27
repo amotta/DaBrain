@@ -8,12 +8,16 @@ enum DYN_PARAM {
 	DYN_PARAM_PNA,
 	// K permeability
 	DYN_PARAM_PK,
+	// neuron type
+	DYN_PARAM_TYPE,
 	DYN_PARAM_LEN
 };
 
 enum DYN_STATE {
 	// membrane voltage
 	DYN_STATE_V,
+	// transmembrane current
+	DYN_STATE_I,
 	// Na channel activation
 	DYN_STATE_M,
 	// Na channel inactivation
