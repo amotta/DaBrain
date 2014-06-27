@@ -199,8 +199,17 @@ __global__ void updateState(
 	float pNa = nDynParam[DYN_PARAM_PNA];
 	float pK = nDynParam[DYN_PARAM_PK];
 
-	// stimulation current (A / m^2)
-	float Istim = Isyn[nId] + 12e-12f;
+	// transmembrane current (A / m^2)
+	float Istim = Isyn[nId];
+
+	// add stimulation
+	if(nDynParam[DYN_PARAM_TYPE] < 0.5){
+		// excitatory neuron
+		Istim += 5.5e-12f;
+	}else{
+		// inhibitory neuron
+		Istim += 10e-12f;
+	}
 
 	float dt = 1e-6f;
 	float aboveThresh = false;
