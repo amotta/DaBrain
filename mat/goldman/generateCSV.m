@@ -2,14 +2,14 @@
 clear all;
 
 % Thousands of neurons
-f = 0.01;
+f = 5;
 
 % Proportion of inhibitory neurons
 pInh = 0.2;
 
 % Upper and lower diagonals
-ku = 1;
-kl = 1;
+ku = 500;
+kl = 500;
 
 N = round(f * 1000);
 Ni = round(pInh * N);
@@ -23,19 +23,19 @@ r = rand(N, 1);
 ri = rand(Ni, 1);
 
 % Leakage
-gL = 1 / 4.3E9 * (1 + 0 * r);
+gL = 1 / 4.3E9 * (0.95 + 0.1 * r);
 
 % Na channel density
-pNa = 20E-6 * (1 + 0 * r);
-pNa(posI) = 20E-6 * (1 + 0 * ri);
+pNa = 20E-6 * (0.95 + 0.1 * r);
+pNa(posI) = 20E-6 * (0.95 + 0.1 * ri);
 
 % K channel density
-pK = 3E-6 * (1 + 0 * r);
-pK(posI) = 10E-6 * (1 + 0 * ri);
+pK = 3E-6 * (0.95 + 0.1 * r);
+pK(posI) = 10E-6 * (0.95 + 0.1 * ri);
 
 % Neuron type
-nType = 0 * (1 + 0 * r);
-nType(posI) = 1 * (1 + 0 * ri);
+nType = 0 * r;
+nType(posI) = 1 * ri;
 
 % Write data to CSV files
 dynParam = [gL, pNa, pK, nType];
@@ -68,7 +68,7 @@ bS = zeros(ku + kl + 1, N);
 for i = 1 : ku
 	piv = (ku + 1) - i;
 	pre = zeros(1, piv);
-	suf = (i / ku ) * rand(1, N - piv);
+	suf = (i / ku) * rand(1, N - piv);
 	bS(i, : ) = [pre, suf];
 end
 
@@ -81,14 +81,11 @@ for i = (ku + 2) : (ku + kl + 1)
 end
 
 % inhibitory neurons
-for i = 1 : (ku + 1 + kl)
-    for j = posI
-        bRow = ku + 1 + i - j;
-        bCol = j;
-        
-        if(i < max(1, j - ku))
+for bRow = 1 : (ku + 1 + kl)
+    for bCol = posI
+        if(bRow < max(1, ku + 2 - bCol))
             continue;
-        elseif(i > min(ku + 1 + kl, j + kl))
+        elseif(bRow > min(ku + 1 + kl, ku + 1 + N - bCol))
             continue;
         else
             bS(bRow, bCol) = -1 * bS(bRow, bCol);
@@ -97,7 +94,7 @@ for i = 1 : (ku + 1 + kl)
 end
 
 % Scale matrix
-bS = 0 * bS;
+bS = 2E-12 * bS;
 
 csvwrite('syn.csv', bS)
 
