@@ -9,4 +9,8 @@
 #include "hodgkinhuxley.h"
 #endif
 
+#ifdef MODEL_GOLDMAN
+#include "goldman.h"
+#endif
+
 #endif
