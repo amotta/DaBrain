@@ -79,7 +79,7 @@ int main(int argc, char ** argv){
 
 	FILE * currentFile;
 	currentFile = fopen("current.log", "w");
-	
+
 	// prepare benchmark
 	clock_t tic;
 	clock_t toc;
@@ -89,7 +89,7 @@ int main(int argc, char ** argv){
 	fflush(stdout);
 
 	tic = clock();
-	while(net.t < 1000){
+	while(net.t < 5000){
 		error = netUpdate(&gpuNet);
 		if(error){
 			printf("Error while updating network.\n");
@@ -101,16 +101,23 @@ int main(int argc, char ** argv){
 		net.t++;
 		gpuNet.t++;
 
-		// copy firing neurons to host
-		gpuCopyMemoryFromGPU(
-			gpuNet.dynState,
-			net.dynState,
-			2 * net.numNeurons * sizeof(float)
-		);
-
-		// logging
-		logFiring(&net, firingFile);
-		logCurrent(&net, currentFile);
+		/*
+		** logging
+		** Only sample with 200 Hz in order to increase execution speed.
+		** The Nyquist frequency is still high enough to observe the
+		** band of gamma frequencies.
+		*/
+		if(net.t % 5 == 0){
+			// copy firing neurons to host
+			gpuCopyMemoryFromGPU(
+				gpuNet.dynState,
+				net.dynState,
+				2 * net.numNeurons * sizeof(float)
+			);
+			
+			logFiring(&net, firingFile);
+			logCurrent(&net, currentFile);
+		}
 	}
 	toc = clock();
 
