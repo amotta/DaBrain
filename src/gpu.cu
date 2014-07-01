@@ -147,4 +147,3 @@ int gpuMultiplyMV(
 
 	return 0;
 }
-

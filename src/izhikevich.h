@@ -1,6 +1,8 @@
 #ifndef IZHIKEVICH_H
 #define IZHIKEVICH_H
 
+#define NEURON_UPDATE izhikevichUpdateState
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -23,7 +25,7 @@ enum DYN_STATE {
 	DYN_STATE_LEN
 };
 
-int neuronUpdateState(
+int izhikevichUpdateState(
 	int numNeurons,
 	float * dynState,
 	float * firing,

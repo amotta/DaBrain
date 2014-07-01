@@ -5,4 +5,8 @@
 #include "izhikevich.h"
 #endif
 
+#ifdef MODEL_HODGKINHUXLEY
+#include "hodgkinhuxley.h"
+#endif
+
 #endif

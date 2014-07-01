@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "izhikevich.h"
 
-__global__ void updateState(
+__global__ void izhikevichUpdateCUDA(
 	int numNeurons,
 	float * dynState,
 	float * firing,
@@ -45,7 +45,7 @@ __global__ void updateState(
 }
 
 #define NUM_WARPS 32
-int neuronUpdateState(
+int izhikevichUpdateState(
 	int numNeurons,
 	float * dynState,
 	float * firing,
@@ -58,7 +58,7 @@ int neuronUpdateState(
 	// update neurons
 	dim3 threads(32 * NUM_WARPS);
 	dim3 grid((int) ceil((double) numNeurons / (32 * NUM_WARPS)));
-	updateState<<<grid, threads>>>(
+	izhikevichUpdateCUDA<<<grid, threads>>>(
 		numNeurons,
 		dynState,
 		firing,

@@ -148,7 +148,8 @@ int netUpdateCurrent(net_t * pNet){
 
 int netUpdateState(net_t * pNet){
 	int error;
-	error = neuronUpdateState(
+
+	error = NEURON_UPDATE(
 		pNet->numNeurons,
 		pNet->dynState,
 		pNet->firing,
