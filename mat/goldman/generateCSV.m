@@ -33,6 +33,11 @@ pNa(posI) = 20E-6 * (0.95 + 0.1 * ri);
 pK = 3E-6 * (0.95 + 0.1 * r);
 pK(posI) = 10E-6 * (0.95 + 0.1 * ri);
 
+% The ECE 2014 poster compared the power spectra
+% of the following two situations:
+% pK = 0.9 * pK (blocking of Nv channels)
+% pK = 1.1 * pK (enhancement of Nv channels)
+
 % Neuron type
 nType = 0 * ones(N, 1);
 nType(posI) = 1 * ones(Ni, 1);
