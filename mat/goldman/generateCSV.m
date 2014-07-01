@@ -2,7 +2,7 @@
 clear all;
 
 % Thousands of neurons
-f = 5;
+f = 10;
 
 % Proportion of inhibitory neurons
 pInh = 0.2;
@@ -34,8 +34,8 @@ pK = 3E-6 * (0.95 + 0.1 * r);
 pK(posI) = 10E-6 * (0.95 + 0.1 * ri);
 
 % Neuron type
-nType = 0 * r;
-nType(posI) = 1 * ri;
+nType = 0 * ones(N, 1);
+nType(posI) = 1 * ones(Ni, 1);
 
 % Write data to CSV files
 dynParam = [gL, pNa, pK, nType];
@@ -88,7 +88,7 @@ for bRow = 1 : (ku + 1 + kl)
         elseif(bRow > min(ku + 1 + kl, ku + 1 + N - bCol))
             continue;
         else
-            bS(bRow, bCol) = -1 * bS(bRow, bCol);
+            bS(bRow, bCol) = -2 * bS(bRow, bCol);
         end
     end
 end
