@@ -215,17 +215,29 @@ __global__ void updateState(
 	float aboveThresh = false;
 	for(int i = 0; i < 1000; i++){
 		float expVal = expf(v * C_xi);
-
+		
 		// leakage current
 		float Il = gL * (v - C_eL);
 
-		// Na current
-		float goldNa = (C_cNaO - C_cNaI * expVal) / (1 - expVal);
-		float Ina = C_A * C_F * C_xi * m * m * h * pNa * v * goldNa;
+		float Ina = 0;
+		float Ik = 0;
 
-		// K current
-		float goldK = (C_cKO - C_cKI * expVal) / (1 - expVal);
-		float Ik = C_A * C_F * C_xi * n * n * pK * v * goldK;
+		/*
+		** TODO
+		** This is a very crude way to prevent a division by zero.
+		** Possible solutions:
+		** - Check for zero voltage before expVal
+		** - Try to use de l'Hôpital's rule
+		*/
+		if(expVal != 1.0f){
+			// Na current
+			float goldNa = (C_cNaO - C_cNaI * expVal) / (1.0f - expVal);
+			Ina = C_A * C_F * C_xi * m * m * h * pNa * v * goldNa;
+
+			// K current
+			float goldK = (C_cKO - C_cKI * expVal) / (1.0f - expVal);
+			Ik = C_A * C_F * C_xi * n * n * pK * v * goldK;
+		}
 
 		// calculate total current
 		Itotal = Istim - Ina - Ik - Il;
@@ -234,7 +246,7 @@ __global__ void updateState(
 		v += dt / C_Cm * Itotal;
 
 		// Na activation
-		m += dt * (
+		double dm = dt * (
 			// aight
 			(1 - m) * 60000 * (v + 0.033f)
 			/ (1 - expf(-(v + 0.033f) / 0.003f))
@@ -245,7 +257,7 @@ __global__ void updateState(
 		);
 
 		// Na inactivation
-		h += dt * (
+		double dh = dt * (
 			- (1 - h) * 50000 * (v + 0.065f)
 			/ (1 - expf((v + 0.065f) / 0.006f))
 			- h * 2250
@@ -253,13 +265,25 @@ __global__ void updateState(
 		);
 
 		// K activation
-		n += dt * (
+		double dn = dt * (
 			// wumbaba
 			(1 - n) * 16000 * (v + 0.01f)
 			/ (1 - expf(-(v + 0.01f) / 0.01f))
 			+ n * 40000 * (v + 0.035f)
 			/ (1 - expf((v + 0.035f) / 0.01f))
 		);
+
+		/*
+		** We should try to avoid this. Excessive use of registers
+		** limits the degree of parallelization on GPGPU.
+		*/
+		if(isnan(dm) || isnan(dh) || isnan(dn)){
+			// nothing
+		}else{
+			m += dm;
+			h += dh;
+			n += dn;
+		}
 
 		// check for action potential
 		if(v >= -35e-3f){
@@ -282,6 +306,11 @@ __global__ void updateState(
 	}
 }
 
+/*
+** TODO
+** Perform benchmarks and find optimal number of warps per SM.
+** - Look into optimization tool from Oxford University
+*/
 #define BLOCK_SIZE (16 * 32)
 int gpuUpdateState(
 	int numNeurons,
