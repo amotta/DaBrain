@@ -148,7 +148,7 @@ int netUpdateCurrent(net_t * pNet){
 
 int netUpdateState(net_t * pNet){
 	int error;
-	error = gpuUpdateState(
+	error = neuronUpdateState(
 		pNet->numNeurons,
 		pNet->dynState,
 		pNet->firing,

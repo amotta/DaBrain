@@ -19,6 +19,9 @@ CFLAGS += -std=c99
 CFLAGS += -O2
 CFLAGS += -g
 
+# Specify model
+CFLAGS += -DMODEL_IZHIKEVICH
+
 NVCCFLAGS  = -arch=sm_20
 NVCCFLAGS += -g
 
