@@ -149,13 +149,25 @@ int netUpdateCurrent(net_t * pNet){
 int netUpdateState(net_t * pNet){
 	int error;
 
-	error = NEURON_UPDATE(
+	#ifdef MODEL_IZHIKEVICH
+	error = izhikevichUpdateState(
 		pNet->numNeurons,
 		pNet->dynState,
 		pNet->firing,
 		pNet->dynParam,
 		pNet->Isyn
 	);
+	#endif
+
+	#ifdef MODEL_HODGKINHUXLEY
+	error = hodgkinhuxleyUpdateState(
+		pNet->numNeurons,
+		pNet->dynState,
+		pNet->firing,
+		pNet->dynParam,
+		pNet->Isyn
+	);
+	#endif
 
 	return error;
 }

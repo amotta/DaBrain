@@ -1,8 +1,6 @@
 #ifndef IZHIKEVICH_H
 #define IZHIKEVICH_H
 
-#define NEURON_UPDATE izhikevichUpdateState
-
 #ifdef __cplusplus
 extern "C" {
 #endif

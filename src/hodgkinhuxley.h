@@ -1,8 +1,6 @@
 #ifndef HODGKINHUXLEY_H
 #define HODGKINHUXLEY_H
 
-#define NEURON_UPDATE hodgkinhuxleyUpdateState
-
 #ifdef __cplusplus
 extern "C" {
 #endif
