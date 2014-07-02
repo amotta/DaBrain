@@ -20,10 +20,12 @@ CFLAGS += -O2
 CFLAGS += -g
 
 # Specify model
-CFLAGS += -DMODEL_IZHIKEVICH 
+CFLAGS += -DMODEL_GOLDMAN
 
 NVCCFLAGS  = -arch=sm_20
 NVCCFLAGS += -g
+NVCCFLAGS += -D NUM_WARPS=$(NUM_WARPS)
+NVCCFLAGS += -D PREFER_L1=$(PREFER_L1)
 
 # Libraries
 LIBS = -lm -lcudart -lcublas -lcsv

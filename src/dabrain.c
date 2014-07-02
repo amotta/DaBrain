@@ -60,6 +60,14 @@ int main(int argc, char ** argv){
 
 	printf("done\n");
 
+	// init GPU
+	printf("Init GPGPU... ");
+	fflush(stdout);
+
+	gpuInit();
+
+	printf("done\n");
+
 	// copy to GPU
 	printf("Copying data to GPU... ");
 	fflush(stdout);
@@ -89,7 +97,7 @@ int main(int argc, char ** argv){
 	fflush(stdout);
 
 	tic = clock();
-	while(net.t < 5000){
+	while(net.t < 1000){
 		error = netUpdate(&gpuNet);
 		if(error){
 			printf("Error while updating network.\n");

@@ -49,7 +49,10 @@ __global__ void izhikevichUpdateCUDA(
 	dynState[DYN_STATE_I * numNeurons + nId] = I;
 }
 
+#ifndef NUM_WARPS
 #define NUM_WARPS 32
+#endif
+
 int izhikevichUpdateState(
 	int numNeurons,
 	float * dynState,
@@ -60,9 +63,12 @@ int izhikevichUpdateState(
 	// reset CUDA error
 	cudaGetLastError();
 
+	// block size
+	int blockSize = 32 * NUM_WARPS;
+
 	// update neurons
-	dim3 threads(32 * NUM_WARPS);
-	dim3 grid((int) ceil((double) numNeurons / (32 * NUM_WARPS)));
+	dim3 threads(blockSize);
+	dim3 grid((int) ceil((double) numNeurons / blockSize));
 	izhikevichUpdateCUDA<<<grid, threads>>>(
 		numNeurons,
 		dynState,

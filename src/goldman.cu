@@ -164,7 +164,11 @@ __global__ void goldmanUpdateCUDA(
 ** Perform benchmarks and find optimal number of warps per SM.
 ** - Look into optimization tool from Oxford University
 */
-#define BLOCK_SIZE (16 * 32)
+
+#ifndef NUM_WARPS
+#define NUM_WARPS 16
+#endif
+
 int goldmanUpdateState(
 	int numNeurons,
 	float * dynState,
@@ -175,9 +179,12 @@ int goldmanUpdateState(
 	// reset CUDA error
 	cudaGetLastError();
 
+	// calculate block size
+	int blockSize = 32 * NUM_WARPS;
+
 	// update neurons
-	dim3 threads(BLOCK_SIZE);
-	dim3 grid((int) ceil((double) numNeurons / BLOCK_SIZE));
+	dim3 threads(blockSize);
+	dim3 grid((int) ceil((double) numNeurons / blockSize));
 	goldmanUpdateCUDA<<<grid, threads>>>(
 		numNeurons,
 		dynState,

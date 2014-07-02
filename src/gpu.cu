@@ -8,14 +8,29 @@
 static bool ready = false;
 static cublasHandle_t handle;
 
-void gpuInit(){
+int gpuInit(){
+	if(ready) return 0;
+
+#if PREFER_L1
+	// we prefer L1 cache over shared memory
+	cudaError_t error;
+	error = cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
+
+	if(error != cudaSuccess){
+		printf("Could not set cache configuration\n");
+		return -1;
+	}
+#endif
+
+	// init cuBLAS library
 	cublasStatus_t status = cublasCreate(&handle);
 	if(status != CUBLAS_STATUS_SUCCESS){
 		printf("Failed to create cuBLAS handle\n");
-		return;
+		return -1;
 	}
 
 	ready = true;
+	return 0;
 }
 
 void gpuCopyMemoryToGPU(const void * hPtr, void ** dPtr, size_t size){
