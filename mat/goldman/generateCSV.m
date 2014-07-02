@@ -2,7 +2,7 @@
 clear all;
 
 % Thousands of neurons
-f = 10;
+f = 10.016;
 
 % Proportion of inhibitory neurons
 pInh = 0.2;
