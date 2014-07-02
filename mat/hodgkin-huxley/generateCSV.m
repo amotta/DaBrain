@@ -75,15 +75,11 @@ for i = (ku + 2) : (ku + kl + 1)
 end
 
 % inhibitory neurons
-for i = 1 : (ku + 1 + kl)
-    i
-    for j = posI
-        bRow = ku + 1 + i - j;
-        bCol = j;
-        
-        if(i < max(1, j - ku))
+for bRow = 1 : (ku + 1 + kl)
+    for bCol = posI
+        if(bRow < max(1, ku + 2 - bCol))
             continue;
-        elseif(i > min(ku + 1 + kl, j + kl))
+        elseif(bRow > min(ku + 1 + kl, ku + 1 + N - bCol))
             continue;
         else
             bS(bRow, bCol) = -1 * bS(bRow, bCol);
