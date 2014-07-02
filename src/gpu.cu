@@ -5,17 +5,26 @@
 #include "gpu.h"
 #include "neuron.h"
 
-static bool ready = false;
 static cublasHandle_t handle;
 
-void gpuInit(){
+int  gpuInit(){
+	// we prefer L1 cache
+	cudaError_t error;
+	error = cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
+
+	if(error != cudaSuccess){
+		printf("Could not set cache config\n");
+		return -1;
+	}
+
+	// init cuBLAS library
 	cublasStatus_t status = cublasCreate(&handle);
 	if(status != CUBLAS_STATUS_SUCCESS){
 		printf("Failed to create cuBLAS handle\n");
-		return;
+		return -1;
 	}
 
-	ready = true;
+	return 0;
 }
 
 void gpuCopyMemoryToGPU(const void * hPtr, void ** dPtr, size_t size){
@@ -57,10 +66,6 @@ int gpuMultiplyBMV(
 	float * vecOut,
 	int vecOutStride
 ){
-	if(!ready){
-		gpuInit();
-	}
-
 	const float alpha = 1.0f;
 	const float beta = 0.0f;
 
@@ -108,10 +113,6 @@ int gpuMultiplyMV(
 	float * vecOut,
 	int vecOutStride
 ){
-	if(!ready){
-		gpuInit();
-	}
-
 	const float alpha = 1.0f;
 	const float beta = 0.0f;
 

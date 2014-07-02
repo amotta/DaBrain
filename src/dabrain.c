@@ -60,6 +60,14 @@ int main(int argc, char ** argv){
 
 	printf("done\n");
 
+	// init GPU
+	printf("Initizaling GPU... ");
+	fflush(stdout);
+
+	gpuInit();
+
+	printf("done\n");
+
 	// copy to GPU
 	printf("Copying data to GPU... ");
 	fflush(stdout);

@@ -160,11 +160,12 @@ __global__ void goldmanUpdateCUDA(
 }
 
 /*
-** TODO
-** Perform benchmarks and find optimal number of warps per SM.
-** - Look into optimization tool from Oxford University
+** Benchmarking on a GeForce GTX 580 showed that best performance
+** is achieved with 32 threads per warp and 20 warps per block.
+** See commit 569c50a3eab78bd089a25d7c04d79a1103279a7e
 */
-#define BLOCK_SIZE (16 * 32)
+#define NUM_WARPS 20
+
 int goldmanUpdateState(
 	int numNeurons,
 	float * dynState,
@@ -175,9 +176,12 @@ int goldmanUpdateState(
 	// reset CUDA error
 	cudaGetLastError();
 
+	// block size
+	int blockSize = 32 * NUM_WARPS;
+
 	// update neurons
-	dim3 threads(BLOCK_SIZE);
-	dim3 grid((int) ceil((double) numNeurons / BLOCK_SIZE));
+	dim3 threads(blockSize);
+	dim3 grid((int) ceil((double) numNeurons / blockSize));
 	goldmanUpdateCUDA<<<grid, threads>>>(
 		numNeurons,
 		dynState,
