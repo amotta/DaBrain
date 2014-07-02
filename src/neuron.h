@@ -1,22 +1,16 @@
 #ifndef NEURON_H
 #define NEURON_H
 
-enum DYN_PARAM {
-	DYN_PARAM_A,
-	DYN_PARAM_B,
-	// voltage reset
-	DYN_PARAM_C,
-	// recovery reset
-	DYN_PARAM_D,
-	DYN_PARAM_LEN
-};
+#ifdef MODEL_IZHIKEVICH
+#include "izhikevich.h"
+#endif
 
-enum DYN_STATE {
-	// membrane voltage
-	DYN_STATE_V,
-	// recovery variable
-	DYN_STATE_U,
-	DYN_STATE_LEN
-};
+#ifdef MODEL_HODGKINHUXLEY
+#include "hodgkinhuxley.h"
+#endif
+
+#ifdef MODEL_GOLDMAN
+#include "goldman.h"
+#endif
 
 #endif

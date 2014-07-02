@@ -60,6 +60,14 @@ int main(int argc, char ** argv){
 
 	printf("done\n");
 
+	// init GPU
+	printf("Init GPGPU... ");
+	fflush(stdout);
+
+	gpuInit();
+
+	printf("done\n");
+
 	// copy to GPU
 	printf("Copying data to GPU... ");
 	fflush(stdout);
@@ -76,7 +84,10 @@ int main(int argc, char ** argv){
 	// prepare logging
 	FILE * firingFile;
 	firingFile = fopen("firing.log", "w");
-	
+
+	FILE * currentFile;
+	currentFile = fopen("current.log", "w");
+
 	// prepare benchmark
 	clock_t tic;
 	clock_t toc;
@@ -98,13 +109,23 @@ int main(int argc, char ** argv){
 		net.t++;
 		gpuNet.t++;
 
-		// copy firing neurons to host
-		gpuCopyMemoryFromGPU(
-			gpuNet.firing,
-			net.firing,
-			net.numNeurons * sizeof(float)
-		);
-		logFiring(&net, firingFile);
+		/*
+		** logging
+		** Only sample with 200 Hz in order to increase execution speed.
+		** The Nyquist frequency is still high enough to observe the
+		** band of gamma frequencies.
+		*/
+		if(net.t % 5 == 0){
+			// copy firing neurons to host
+			gpuCopyMemoryFromGPU(
+				gpuNet.dynState,
+				net.dynState,
+				2 * net.numNeurons * sizeof(float)
+			);
+			
+			logFiring(&net, firingFile);
+			logCurrent(&net, currentFile);
+		}
 	}
 	toc = clock();
 
@@ -117,6 +138,7 @@ int main(int argc, char ** argv){
 
 	// end logging
 	fclose(firingFile);
+	fclose(currentFile);
 
 	return EXIT_SUCCESS;
 }

@@ -19,11 +19,16 @@ CFLAGS += -std=c99
 CFLAGS += -O2
 CFLAGS += -g
 
+# Specify model
+CFLAGS += -DMODEL_GOLDMAN
+
 NVCCFLAGS  = -arch=sm_20
 NVCCFLAGS += -g
+NVCCFLAGS += -D NUM_WARPS=$(NUM_WARPS)
+NVCCFLAGS += -D PREFER_L1=$(PREFER_L1)
 
 # Libraries
-LIBS = -lcudart -lcublas -lcsv
+LIBS = -lm -lcudart -lcublas -lcsv
 
 # C files
 CSRC = $(wildcard *.c)

@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
@@ -7,14 +8,29 @@
 static bool ready = false;
 static cublasHandle_t handle;
 
-void gpuInit(){
+int gpuInit(){
+	if(ready) return 0;
+
+#if PREFER_L1
+	// we prefer L1 cache over shared memory
+	cudaError_t error;
+	error = cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
+
+	if(error != cudaSuccess){
+		printf("Could not set cache configuration\n");
+		return -1;
+	}
+#endif
+
+	// init cuBLAS library
 	cublasStatus_t status = cublasCreate(&handle);
 	if(status != CUBLAS_STATUS_SUCCESS){
 		printf("Failed to create cuBLAS handle\n");
-		return;
+		return -1;
 	}
 
 	ready = true;
+	return 0;
 }
 
 void gpuCopyMemoryToGPU(const void * hPtr, void ** dPtr, size_t size){
@@ -77,7 +93,7 @@ int gpuMultiplyBMV(
 		// matrix
 		mat,
 		// leading dimension of matrix
-		matRows,
+		matSuper + 1 + matSub,
 		// vector
 		vecIn,
 		// vector stride
@@ -145,57 +161,4 @@ int gpuMultiplyMV(
 	}
 
 	return 0;
-}
-
-__global__ void updateState(
-	float * dynState,
-	float * firing,
-	const float * dynParam,
-	const float * Isyn
-){
-	// neuron id
-	int nId = blockDim.x * blockIdx.x + threadIdx.x;
-
-	// pointer to corresponding column
-	float * nDynState = &dynState[DYN_STATE_LEN * nId];
-	const float * nDynParam = &dynParam[DYN_PARAM_LEN * nId];
-
-	float v = nDynState[DYN_STATE_V];
-	float u = nDynState[DYN_STATE_U];
-	// synaptic current + thalamic input
-	float I = Isyn[nId] + 5.0f;
-
-	if(v >= 30.0f){
-		v = nDynParam[DYN_PARAM_C];
-		u = u + nDynParam[DYN_PARAM_D];
-
-		// neuron is firing
-		firing[nId] = 1.0f;
-	}else{
-		// not firing
-		firing[nId] = 0.0f;
-	}
-
-	// update state
-	v += 0.5f * (0.04f * v * v + 5.0f * v + 140 - u + I);
-	v += 0.5f * (0.04f * v * v + 5.0f * v + 140 - u + I);
-	u += nDynParam[DYN_PARAM_A] * (nDynParam[DYN_PARAM_B] * v - u);
-
-	// write result
-	nDynState[DYN_STATE_V] = v;
-	nDynState[DYN_STATE_U] = u;
-}
-
-#define BLOCK_SIZE (32 * 32)
-void gpuUpdateState(
-	int numNeurons,
-	float * dynState,
-	float * firing,
-	const float * dynParam,
-	const float * Isyn
-){
-	dim3 threads(BLOCK_SIZE);
-	dim3 grid((int) ceil((double) numNeurons / BLOCK_SIZE));
-
-	updateState<<<grid, threads>>>(dynState, firing, dynParam, Isyn);
 }
