@@ -35,15 +35,17 @@ d = 8 - 6 * r .^ 2;
 d(posI) = 2 * ones(Ni, 1);
 
 % Write data to CSV files
-dynParam = [a'; b'; c'; d'];
+dynParam = [a, b, c, d];
 csvwrite('dynParam.csv', dynParam);
 
 % Initial membrane voltage
 v = -65 * ones(N, 1);
 % Initial recovery value
 u = b .* v;
+% Transmembrane current
+iZero = zeros(N, 1);
 
-dynState = [v'; u'];
+dynState = [v, u, iZero];
 csvwrite('dynState.csv', dynState);
 
 % banded synapse matrix
@@ -54,7 +56,7 @@ for i = 1 : ku
     i
 	piv = (ku + 1) - i;
 	pre = zeros(1, piv);
-	suf = (i / ku ) * rand(1, N - piv);
+	suf = (i / ku) * rand(1, N - piv);
 	bS(i, : ) = [pre, suf];
 end
 

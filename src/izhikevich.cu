@@ -14,18 +14,22 @@ __global__ void izhikevichUpdateCUDA(
 	// let's not exaggerate
 	if(nId >= numNeurons) return;
 
-	// pointer to corresponding column
-	float * nDynState = &dynState[DYN_STATE_LEN * nId];
-	const float * nDynParam = &dynParam[DYN_PARAM_LEN * nId];
+	// load neuron state
+	float v = dynState[DYN_STATE_V * numNeurons + nId];
+	float u = dynState[DYN_STATE_U * numNeurons + nId];
 
-	float v = nDynState[DYN_STATE_V];
-	float u = nDynState[DYN_STATE_U];
+	// load neuron parameters
+	const float a = dynParam[DYN_PARAM_A * numNeurons + nId];
+	const float b = dynParam[DYN_PARAM_B * numNeurons + nId];
+	const float c = dynParam[DYN_PARAM_C * numNeurons + nId];
+	const float d = dynParam[DYN_PARAM_D * numNeurons + nId];
+
 	// synaptic current + thalamic input
 	float I = Isyn[nId] + 5.0f;
 
 	if(v >= 30.0f){
-		v = nDynParam[DYN_PARAM_C];
-		u = u + nDynParam[DYN_PARAM_D];
+		v = c;
+		u = u + d;
 
 		// neuron is firing
 		firing[nId] = 1.0f;
@@ -37,11 +41,12 @@ __global__ void izhikevichUpdateCUDA(
 	// update state
 	v += 0.5f * (0.04f * v * v + 5.0f * v + 140 - u + I);
 	v += 0.5f * (0.04f * v * v + 5.0f * v + 140 - u + I);
-	u += nDynParam[DYN_PARAM_A] * (nDynParam[DYN_PARAM_B] * v - u);
+	u += a * (b * v - u);
 
 	// write result
-	nDynState[DYN_STATE_V] = v;
-	nDynState[DYN_STATE_U] = u;
+	dynState[DYN_STATE_V * numNeurons + nId] = v;
+	dynState[DYN_STATE_U * numNeurons + nId] = u;
+	dynState[DYN_STATE_I * numNeurons + nId] = I;
 }
 
 #define NUM_WARPS 32

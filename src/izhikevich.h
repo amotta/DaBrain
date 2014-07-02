@@ -20,6 +20,8 @@ enum DYN_STATE {
 	DYN_STATE_V,
 	// recovery variable
 	DYN_STATE_U,
+	// transmembrane current
+	DYN_STATE_I,
 	DYN_STATE_LEN
 };
 
