@@ -19,6 +19,8 @@ enum DYN_PARAM {
 enum DYN_STATE {
 	// membrane voltage
 	DYN_STATE_V,
+	// transmembrane current
+	DYN_STATE_I,
 	// K channel activation
 	DYN_STATE_N,
 	// Na channel activation

@@ -14,32 +14,24 @@ __global__ void hodgkinhuxleyUpdateCUDA(
 	// let's not exaggerate
 	if(nId >= numNeurons) return;
 
-	// pointer to corresponding column
-	float * nDynState = &dynState[DYN_STATE_LEN * nId];
-	const float * nDynParam = &dynParam[DYN_PARAM_LEN * nId];
-
 	// current state
-	float v = nDynState[DYN_STATE_V];
-	float n = nDynState[DYN_STATE_N];
-	float m = nDynState[DYN_STATE_M];
-	float h = nDynState[DYN_STATE_H];
+	float v = dynState[DYN_STATE_V * numNeurons + nId];
+	float n = dynState[DYN_STATE_N * numNeurons + nId];
+	float m = dynState[DYN_STATE_M * numNeurons + nId];
+	float h = dynState[DYN_STATE_H * numNeurons + nId];
+	// conductances
+	const float gK  = dynParam[DYN_PARAM_GK  * numNeurons + nId];
+	const float gNa = dynParam[DYN_PARAM_GNA * numNeurons + nId];
+	const float gL  = dynParam[DYN_PARAM_GL  * numNeurons + nId];
 
 	/*
+	** reversal potentials
 	** Source:
 	** Taken from Gerstner's homepage and
 	** Arhem's Berkley Madonna simulation.
 	*/
-
-	// K channels
-	const float gK = nDynParam[DYN_PARAM_GK];
 	const float vK = -12.0f;
-
-	// Na channels
-	const float gNa = nDynParam[DYN_PARAM_GNA];
 	const float vNa = 115.0f;
-
-	// leakage
-	const float gL = nDynParam[DYN_PARAM_GL];
 	const float vL = 10.6f;
 
 	// synaptic current + thalamic input
@@ -79,10 +71,11 @@ __global__ void hodgkinhuxleyUpdateCUDA(
 	}
 
 	// write back dynamics state
-	nDynState[DYN_STATE_V] = v;
-	nDynState[DYN_STATE_N] = n;
-	nDynState[DYN_STATE_M] = m;
-	nDynState[DYN_STATE_H] = h;
+	dynState[DYN_STATE_V * numNeurons + nId] = v;
+	dynState[DYN_STATE_I * numNeurons + nId] = I;
+	dynState[DYN_STATE_N * numNeurons + nId] = n;
+	dynState[DYN_STATE_M * numNeurons + nId] = m;
+	dynState[DYN_STATE_H * numNeurons + nId] = h;
 
 	// write firing
 	if(aboveThresh){

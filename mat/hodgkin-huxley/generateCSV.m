@@ -27,7 +27,7 @@ gNa = 120 * (0.95 + 0.1 * r);
 gL = 0.3 * (0.95 + 0.1 * r);
 
 % Write data to CSV files
-dynParam = [gK'; gNa'; gL'];
+dynParam = [gK, gNa, gL];
 csvwrite('dynParam.csv', dynParam);
 
 % Initial membrane voltage
@@ -48,8 +48,11 @@ hAlphaZero = 0.07;
 hBetaZero = 1 / (exp(30 / 10) + 1);
 hZero = hAlphaZero / (hAlphaZero + hBetaZero) * ones(N, 1);
 
+% Transmembrane current
+iZero = zeros(N, 1);
+
 % Save initial states
-dynState = [vZero'; nZero'; mZero'; hZero'];
+dynState = [vZero, iZero, nZero, mZero, hZero];
 csvwrite('dynState.csv', dynState);
 
 % banded synapse matrix
