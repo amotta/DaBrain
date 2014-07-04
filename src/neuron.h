@@ -1,16 +1,23 @@
 #ifndef NEURON_H
 #define NEURON_H
 
-#ifdef MODEL_IZHIKEVICH
-#include "izhikevich.h"
-#endif
+typedef struct NEURON neuron_t;
 
-#ifdef MODEL_HODGKINHUXLEY
-#include "hodgkinhuxley.h"
-#endif
-
-#ifdef MODEL_GOLDMAN
-#include "goldman.h"
-#endif
+// structure for all neuron models
+struct NEURON {
+	// model name
+	const char * name;
+	// matrix size
+	const int paramLen;
+	const int stateLen;
+	// data
+	const float * param;
+	float * state;
+	// update function
+	int (* updateFunc)(
+		int numNeurons,
+		neuron_t * neuron
+	);
+};
 
 #endif

@@ -2,15 +2,21 @@
 #define NET_H
 
 #include "neuron.h"
+#include "synapse.h"
 
 /*
 ** Entire network of neurons
 */
 typedef struct {
+	// time
+	int time;
 	// number of neurons
 	const int numNeurons;
-	// time
-	int t;
+	// neuron model
+	neuron_t neuron;
+	// synapse model
+	synapse_t synapse;
+#if 0
 	// neuron dynamics parameter
 	const float * dynParam;
 	// neuron state
@@ -25,6 +31,7 @@ typedef struct {
 	const int synSuper;
 	// number of subdiagonals
 	const int synSub;
+#endif
 } net_t;
 
 int netNew(net_t * pNet);
