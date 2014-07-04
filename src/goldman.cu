@@ -1,6 +1,54 @@
 #include <stdio.h>
 #include "goldman.h"
 
+enum DYN_PARAM {
+	// Leakage conductance
+	DYN_PARAM_GL,
+	// Na permeability
+	DYN_PARAM_PNA,
+	// K permeability
+	DYN_PARAM_PK,
+	// neuron type
+	DYN_PARAM_TYPE,
+	DYN_PARAM_LEN
+};
+
+enum DYN_STATE {
+	// membrane voltage
+	DYN_STATE_V,
+	// firing?
+	DYN_STATE_FIRE,
+	// transmembrane current
+	DYN_STATE_I,
+	// synaptic current
+	DYN_STATE_I_SYN,
+	// Na channel activation
+	DYN_STATE_M,
+	// Na channel inactivation
+	DYN_STATE_H,
+	// K channel activation
+	DYN_STATE_N,
+	DYN_STATE_LEN
+};
+
+int goldUpdate(neuron_t * neuron);
+
+const neuron_t neuronGold = {
+	.name = "Hodgkin-Huxley Goldman",
+	.paramLen = DYN_PARAM_LEN,
+	.stateLen = DYN_STATE_LEN,
+	// indices
+	.fireIdx = DYN_STATE_FIRE,
+	.iSynIdx = DYN_STATE_I_SYN,
+	// update
+	.update = goldUpdate
+};
+
+int goldUpdate(neuron_t * neuron){
+	printf("Yeah!\n");
+	return 0;
+}
+
 // Faraday constant (C / mol)
 #define C_F 96485.34f
 // ideal gas constant (V C / K mol)
@@ -23,6 +71,8 @@
 #define C_Cm 7e-12f
 // membrane area (C / mol)
 #define C_A 100e-12f
+// time step
+#define C_DT 1e-6f
 
 __global__ void goldmanUpdateCUDA(
 	int numNeurons,
@@ -44,10 +94,10 @@ __global__ void goldmanUpdateCUDA(
 	float n = dynState[DYN_STATE_N * numNeurons + nId];
 
 	// parameters
-	float gL   = dynParam[DYN_PARAM_GL   * numNeurons + nId];
-	float pNa  = dynParam[DYN_PARAM_PNA  * numNeurons + nId];
-	float pK   = dynParam[DYN_PARAM_PK   * numNeurons + nId];
-	float type = dynParam[DYN_PARAM_TYPE * numNeurons + nId];
+	const float gL   = dynParam[DYN_PARAM_GL   * numNeurons + nId];
+	const float pNa  = dynParam[DYN_PARAM_PNA  * numNeurons + nId];
+	const float pK   = dynParam[DYN_PARAM_PK   * numNeurons + nId];
+	const float type = dynParam[DYN_PARAM_TYPE * numNeurons + nId];
 
 	// total current (A / m^2)
 	float Itotal;
@@ -64,7 +114,6 @@ __global__ void goldmanUpdateCUDA(
 		Istim += 10e-12f;
 	}
 
-	float dt = 1e-6f;
 	float aboveThresh = false;
 	for(int i = 0; i < 1000; i++){
 		float expVal = expf(v * C_xi);
@@ -84,11 +133,11 @@ __global__ void goldmanUpdateCUDA(
 		*/
 		if(expVal != 1.0f){
 			// Na current
-			float goldNa = (C_cNaO - C_cNaI * expVal) / (1.0f - expVal);
+			const float goldNa = (C_cNaO - C_cNaI * expVal) / (1.0f - expVal);
 			Ina = C_A * C_F * C_xi * m * m * h * pNa * v * goldNa;
 
 			// K current
-			float goldK = (C_cKO - C_cKI * expVal) / (1.0f - expVal);
+			const float goldK = (C_cKO - C_cKI * expVal) / (1.0f - expVal);
 			Ik = C_A * C_F * C_xi * n * n * pK * v * goldK;
 		}
 
@@ -96,10 +145,10 @@ __global__ void goldmanUpdateCUDA(
 		Itotal = Istim - Ina - Ik - Il;
 
 		// membrane voltage
-		v += dt / C_Cm * Itotal;
+		const float dv = C_DT / C_Cm * Itotal;
 
 		// Na activation
-		double dm = dt * (
+		const float dm = C_DT * (
 			// aight
 			(1 - m) * 60000 * (v + 0.033f)
 			/ (1 - expf(-(v + 0.033f) / 0.003f))
@@ -110,7 +159,7 @@ __global__ void goldmanUpdateCUDA(
 		);
 
 		// Na inactivation
-		double dh = dt * (
+		h += C_DT * (
 			- (1 - h) * 50000 * (v + 0.065f)
 			/ (1 - expf((v + 0.065f) / 0.006f))
 			- h * 2250
@@ -118,7 +167,7 @@ __global__ void goldmanUpdateCUDA(
 		);
 
 		// K activation
-		double dn = dt * (
+		n += C_DT * (
 			// wumbaba
 			(1 - n) * 16000 * (v + 0.01f)
 			/ (1 - expf(-(v + 0.01f) / 0.01f))
@@ -126,17 +175,8 @@ __global__ void goldmanUpdateCUDA(
 			/ (1 - expf((v + 0.035f) / 0.01f))
 		);
 
-		/*
-		** We should try to avoid this. Excessive use of registers
-		** limits the degree of parallelization on GPGPU.
-		*/
-		if(isnan(dm) || isnan(dh) || isnan(dn)){
-			// nothing
-		}else{
-			m += dm;
-			h += dh;
-			n += dn;
-		}
+		// membrane voltage
+		v += dv;
 
 		// check for action potential
 		if(v >= -35e-3f){

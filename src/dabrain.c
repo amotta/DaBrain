@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "gpu.h"
-#include "log.h"
 #include "net.h"
+#include "goldman.h"
+#include "syncurrent.h"
 
 static const char * dynParamFile = "dynParam.csv";
 static const char * dynStateFile = "dynState.csv";
@@ -30,21 +30,28 @@ int main(int argc, char ** argv){
 	);
 	if(error) return EXIT_FAILURE;
 
+	int numSynapses = synSuper + 1 + synSub;
+
 	printf("done\n");
 	printf(
 		"> Number of neurons: %d\n"
 		"> Number of synapses per neuron: %d\n",
 		numNeurons,
-		synSuper + 1 + synSub
+		numSynapses
 	);
 
-	// create new network
+	// choose neuron and synapse model
+	neuron_t neuron = neuronGold;
+	synapse_t synapse = synCurrent;
+
+	// configure network
 	net_t net = {
-		.numNeurons = numNeurons,
-		.synSuper = synSuper,
-		.synSub = synSub
+		.neuron = neuron,
+		.synapse = synapse
 	};
-	netNew(&net);
+
+	// allocate memory
+	netNew(&net, numNeurons, numSynapses);
 
 	// load network from CSV files
 	printf("Loading CSV files... ");
@@ -60,6 +67,18 @@ int main(int argc, char ** argv){
 
 	printf("done\n");
 
+	printf("Check... ");
+	fflush(stdout);
+
+	for(int i = 0; i < 100; i++){
+		printf(
+			"Neuron %d: %e\n",
+			i,
+			net.neuron.param[i]
+		);
+	}
+
+#if 0
 	// init GPU
 	printf("Initizaling GPU... ");
 	fflush(stdout);
@@ -97,7 +116,7 @@ int main(int argc, char ** argv){
 	fflush(stdout);
 
 	tic = clock();
-	while(net.t < 5000){
+	while(net.t < 1000){
 		error = netUpdate(&gpuNet);
 		if(error){
 			printf("Error while updating network.\n");
@@ -139,6 +158,7 @@ int main(int argc, char ** argv){
 	// end logging
 	fclose(firingFile);
 	fclose(currentFile);
+#endif
 
 	return EXIT_SUCCESS;
 }

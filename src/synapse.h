@@ -1,5 +1,5 @@
 #ifndef SYNAPSE_H
-#define SYNPASE_H
+#define SYNAPSE_H
 
 #include "neuron.h"
 
@@ -10,14 +10,20 @@ typedef struct SYNAPSE synapse_t;
 struct SYNAPSE {
 	// model name
 	const char * name;
-	// synapse matrix
-	const float * mat;
+	// update
+	int (* update)(synapse_t * synapse, neuron_t * neuron);
+
+	// number of neurons
+	int numNeurons;
 	// number of synapses
-	const int number;
-	// update function
-	int (* updateFunc)(
-		int numNeurons,
-		neuron_t * neurons,
-		synapse_t * synapse
-	);
+	int numSynapses;
+	// synapse matrix
+	float * mat;
 };
+
+int synapseNew(synapse_t * synapse, int numNeurons, int numSynapses);
+int synapseRead(synapse_t * synapse, const char * synapseFile);
+int synapseToGPU(synapse_t * synapse);
+int synapseUpdate(synapse_t * synapse, neuron_t * neurons);
+
+#endif
