@@ -36,12 +36,10 @@ int gpuMultiplyMV(
 	float * vecOut,
 	int vecOutStride
 );
-int gpuUpdateState(
-	int numNeurons,
-	float * dynState,
-	float * firing,
-	const float * dynParam,
-	const float * Isyn
+int gpuScaleV(
+	int vecRows,
+	const float * alpha,
+	float * vec
 );
 
 #ifdef __cplusplus

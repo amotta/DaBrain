@@ -148,3 +148,29 @@ int gpuMultiplyMV(
 
 	return 0;
 }
+
+int gpuScaleV(
+	int vecRows,
+	const float * alpha,
+	float * vec
+){
+	cublasStatus_t status;
+	status = cublasSscal(
+		handle,
+		// vector size
+		vecRows,
+		// scaling factor
+		alpha,
+		// vector
+		vec,
+		// stride between elements
+		1
+	);
+
+	if(status != CUBLAS_STATUS_SUCCESS){
+		printf("Error in vector scaling\n");
+		return -1;
+	}
+
+	return 0;
+}
