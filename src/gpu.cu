@@ -149,7 +149,7 @@ int gpuMultiplyMV(
 	return 0;
 }
 
-int gpuScaleV(
+int gpuMultiplySV(
 	int vecRows,
 	const float * alpha,
 	float * vec

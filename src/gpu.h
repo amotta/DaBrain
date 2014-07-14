@@ -36,7 +36,7 @@ int gpuMultiplyMV(
 	float * vecOut,
 	int vecOutStride
 );
-int gpuScaleV(
+int gpuMultiplySV(
 	int vecRows,
 	const float * alpha,
 	float * vec
