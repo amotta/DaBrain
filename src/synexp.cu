@@ -53,7 +53,7 @@ __global__ void synExpUpdateVec(
 			// load into register
 			state[s] = vecState[
 				SYN_STATE_LEN * numNeurons * t
-				+ numNeurons * s
+				+ s * numNeurons
 				+ id
 			];
 
@@ -65,7 +65,7 @@ __global__ void synExpUpdateVec(
 			// store
 			vecState[
 				SYN_STATE_LEN * numNeurons * t
-				+ numNeurons * s
+				+ s * numNeurons
 				+ id
 			] = state[s];
 		}
@@ -99,9 +99,51 @@ int synExpUpdateState(
 }
 
 int synExpUpdateCurrent(
-	int numNeurons,
-	float * Isyn,
-	const float * synState
+	const int numNeurons,
+	const float * synState,
+	const float ** synMats,
+	const int synSuper,
+	const int synSub,
+	float * Isyn
 ){
+	cudaError_t error;
+
+	float * gpuCond;
+	error = cudaMalloc((void **) &gpuCond, numNeurons * sizeof(float));
+
+	if(error){
+		printf("Could not allocate memory\n");
+		return -1;
+	}
+
+	for(int t = 0; t < SYN_TYPE_LEN; ++t){
+		float * synActive = &synState[
+			SYN_STATE_LEN * numNeurons * t
+			+ SYN_STATE_A * numNeurons
+		];
+
+		gpuMultiplyBMV(
+			// synapse matrix
+			synMat[t],
+			numNeurons,
+			numNeurons,
+			synSuper,
+			synSub,
+			// activity vector
+			synActive, 1,
+			// conductance vector
+			gpuCond, 1
+		);
+
+		/*
+		** TODO
+		** I = conductance x bias
+		** bias = voltage - reversal potential
+		** Isyn = sum of all I
+		*/
+	}
+	
+	cudaFree(gpuCond);
+
 	return 0;
 }
