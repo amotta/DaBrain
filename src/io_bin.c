@@ -1,14 +1,13 @@
 #include <stdio.h>
 #include "io_bin.h"
 
-#define BUF_SIZE 256
-
 int ioBinReadMat(
 	const char * fileName,
 	const int rows,
 	const int cols,
 	float * mat
 ){
+	// open file
 	FILE * file = fopen(fileName, "r");
 
 	// check for error
@@ -17,36 +16,38 @@ int ioBinReadMat(
 		return -1;
 	}
 
-	int status = 0;
-	size_t numDone = 0;
-	size_t numTotal = (size_t) rows * cols;
+	// skip the matrix size
+	int error = fseek(
+		file,
+		2 * sizeof(int),
+		SEEK_CUR
+	);
 
-	while(numDone < numTotal){
-		size_t numRead = fread(
-			(void *) &mat[numDone],
-			sizeof(float),
-			BUF_SIZE,
-			file
-		);
+	if(error){
+		printf("Could not skip matrix size\n");
 
-		if(!numRead){
-			printf("Error while reading file %s\n", fileName);
-			status = -1;
-			break;
-		}
-
-		// go to next buffer
-		numDone += numRead;
+		fclose(file);
+		return -1;
 	}
 
-	if(numDone < numTotal){
+	size_t numTotal = (size_t) rows * cols;
+	size_t numRead = fread(
+		(void *) mat,
+		sizeof(float),
+		numTotal,
+		file
+	);
+
+	if(numRead < numTotal){
 		printf("Failed to read file %s\n", fileName),
-		status = -1;
+
+		fclose(file);
+		return -1;
 	}
 
 	// close file
 	fclose(file);
-	return status;
+	return 0;
 }
 
 int ioBinReadMatSize(
