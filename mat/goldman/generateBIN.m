@@ -1,9 +1,6 @@
 % Generate file
 clear all;
 
-% Open file
-fileID = fopen('config.bin', 'w');
-
 % Proportion of inhibitory neurons
 pInh = 0.2;
 
@@ -15,9 +12,6 @@ kl = 500;
 N = 10016;
 Ni = round(pInh * N);
 Ne = N - Ni;
-
-% Write neuron count
-fwrite(fileID, N, 'int');
 
 % Index of inhibitory neurons
 posI = round(linspace(1, N, Ni));
@@ -47,10 +41,12 @@ nType = 0 * ones(N, 1);
 nType(posI) = 1 * ones(Ni, 1);
 
 % Write data to file
-fwrite(fileID, gL, 'float');
-fwrite(fileID, pNa, 'float');
-fwrite(fileID, pK, 'float');
-fwrite(fileID, nType, 'float');
+dynParam = [gL, pNa, pK, nType];
+
+fileID = fopen('dynParam.bin', 'w');
+fwrite(fileID, size(dynParam), 'int');
+fwrite(fileID, dynParam, 'float');
+fclose(fileID);
 
 % Membrane voltage
 vZero = -70E-3 * ones(N, 1);
@@ -69,11 +65,12 @@ hZero = ones(N, 1);
 nZero = zeros(N, 1);
 
 % Write initial state
-fwrite(fileID, vZero, 'float');
-fwrite(fileID, iZero, 'float');
-fwrite(fileID, mZero, 'float');
-fwrite(fileID, hZero, 'float');
-fwrite(fileID, nZero, 'float');
+dynState = [vZero, iZero, mZero, hZero, nZero];
+
+fileID = fopen('dynState.bin', 'w');
+fwrite(fileID, size(dynState), 'int');
+fwrite(fileID, dynState, 'float');
+fclose(fileID);
 
 % banded synapse matrix
 bS = zeros(ku + kl + 1, N);
@@ -111,11 +108,12 @@ end
 bS = 2E-12 * bS;
 
 % Write synapse matrix
-fwrite(fileID, ku, 'int');
-fwrite(fileID, kl, 'int');
-fwrite(fileID, bS, 'float');
-fwrite(fileID, bS, 'float');
+fileID = fopen('syn.bin', 'w');
 
+for i = 1:2
+    fwrite(fileID, size(bS), 'int');
+    fwrite(fileID, bS, 'float');
+end
 %% Run CUDA simulation
 system('./dabrain');
 load('firing.log');
