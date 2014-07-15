@@ -204,27 +204,27 @@ int netRead(
 	// read dynamics parameters
 	error = ioReadMat(
 		dynParamFile,
-		(float *) pNet->dynParam,
 		pNet->numNeurons,
-		DYN_PARAM_LEN
+		DYN_PARAM_LEN,
+		(float *) pNet->dynParam
 	);
 	if(error) return error;
 
 	// read dynamics state matrix
 	error = ioReadMat(
 		dynStateFile,
-		pNet->dynState,
 		pNet->numNeurons,
-		DYN_STATE_LEN
+		DYN_STATE_LEN,
+		pNet->dynState
 	);
 	if(error) return error;
 
 	// read synapse matrix
 	error = ioReadMat(
 		synapseFile,
-		(float *) pNet->syn,
 		pNet->synSuper + 1 + pNet->synSub,
-		pNet->numNeurons
+		pNet->numNeurons,
+		(float *) pNet->syn
 	);
 	if(error) return error;
 
