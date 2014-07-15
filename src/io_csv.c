@@ -8,7 +8,7 @@
 ** TODO
 ** Wrap up user data in structure. Signal ``abort'' to CSV reader.
 */
-int ioReadCSV(
+int readCsv(
 	const char * fileName,
 	void (*cbField)(void *, size_t, void *),
 	void (*cbRow)(int, void *),
@@ -81,7 +81,7 @@ struct matReadState {
 	int curCol;
 };
 
-void ioReadMatFieldCB(void * buf, size_t bufLen, void * data){
+void readMatColCallback(void * buf, size_t bufLen, void * data){
 	struct matReadState * statePtr = (struct matReadState *) data;
 	if(statePtr->curCol >= statePtr->cols){
 		printf("Matrix in CSV file has too many columns.\n");
@@ -117,14 +117,14 @@ void ioReadMatFieldCB(void * buf, size_t bufLen, void * data){
 	statePtr->curCol++;
 }
 
-void ioReadMatRowCB(int lineBreak, void * data){
+void readMatRowCallback(int lineBreak, void * data){
 	struct matReadState * statePtr = (struct matReadState *) data;
 
 	statePtr->curCol = 0;
 	statePtr->curRow++;
 }
 
-int ioReadMat(
+int ioCsvReadMat(
 	const char * fileName,
 	float * mat,
 	int rows,
@@ -139,10 +139,10 @@ int ioReadMat(
 		.curCol = 0
 	};
 
-	status = ioReadCSV(
+	status = readCsv(
 		fileName,
-		ioReadMatFieldCB,
-		ioReadMatRowCB,
+		readMatColCallback,
+		readMatRowCallback,
 		(void *) &state		
 	);
 
@@ -160,7 +160,7 @@ struct matSize {
 	int cols;
 };
 
-void ioReadMatSizeColCB(void * buf, size_t bufLen, void * data){
+void readSizeColCallback(void * buf, size_t bufLen, void * data){
 	struct matSize * matSizePtr = (struct matSize *) data;
 
 	// count columns of first row
@@ -169,24 +169,24 @@ void ioReadMatSizeColCB(void * buf, size_t bufLen, void * data){
 	}
 }
 
-void ioReadMatSizeRowCB(int lineBreak, void * data){
+void readSizeRowCallback(int lineBreak, void * data){
 	struct matSize * matSizePtr = (struct matSize *) data;
 
 	// increment number of rows
 	matSizePtr->rows++;
 }
 
-int ioReadMatSize(const char * fileName, int * rows, int * cols){
+int ioCsvReadMatSize(const char * fileName, int * rows, int * cols){
 	int status;
 	struct matSize matSize = {
 		.rows = 0,
 		.cols = 0
 	};
 
-	status = ioReadCSV(
+	status = readCsv(
 		fileName,
-		ioReadMatSizeColCB,
-		ioReadMatSizeRowCB,
+		readSizeColCallback,
+		readSizeRowCallback,
 		(void *) &matSize
 	);
 
