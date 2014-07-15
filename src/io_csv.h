@@ -3,10 +3,11 @@
 
 int ioCsvReadMat(
 	const char * fileName,
-	float * mat,
-	int rows,
-	int cols
+	const int rows,
+	const int cols,
+	float * mat
 );
+
 int ioCsvReadMatSize(
 	const char * fileName,
 	int * rows,

@@ -126,9 +126,9 @@ void readMatRowCallback(int lineBreak, void * data){
 
 int ioCsvReadMat(
 	const char * fileName,
-	float * mat,
-	int rows,
-	int cols
+	const int rows,
+	const int cols,
+	float * mat
 ){
 	int status;
 	struct matReadState state = {
