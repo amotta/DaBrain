@@ -1,6 +1,10 @@
 #ifndef IO_H
 #define IO_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int ioReadMat(
 	const char * fileName,
 	const int rows,
@@ -13,5 +17,9 @@ int ioReadMatSize(
 	int * rows,
 	int * cols
 );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
