@@ -27,32 +27,60 @@ int  gpuInit(){
 	return 0;
 }
 
-void gpuCopyMemoryToGPU(const void * hPtr, void ** dPtr, size_t size){
+int gpuCopyTo(
+	const size_t size,
+	const void * hPtr,
+	void ** dPtr
+){
 	cudaError_t error = cudaSuccess;
 
+	// allocate memory on GPU
 	error = cudaMalloc(dPtr, size);
+
 	if(error != cudaSuccess){
 		printf("Failed to allocate device memory\n");
-		return;
+		return -1;
 	}
 
-	error = cudaMemcpy((void *) *dPtr, hPtr, size, cudaMemcpyHostToDevice);
+	// copy data to GPU
+	error = cudaMemcpy(
+		(void *) *dPtr,
+		hPtr,
+		size,
+		cudaMemcpyHostToDevice
+	);
+
 	if(error != cudaSuccess){
 		printf("Failed to copy data to GPU. Error:\n");
 		printf("%s\n", cudaGetErrorString(error));
-		return;
+		return -1;
 	}
+
+	return 0;
 }
 
-void gpuCopyMemoryFromGPU(const void * dPtr, void * hPtr, size_t size){
+int gpuCopyFrom(
+	const size_t size,
+	const void * dPtr,
+	void * hPtr
+){
 	cudaError_t error = cudaSuccess;
 
-	error = cudaMemcpy(hPtr, dPtr, size, cudaMemcpyDeviceToHost);
+	// copy data from GPU
+	error = cudaMemcpy(
+		hPtr,
+		dPtr,
+		size,
+		cudaMemcpyDeviceToHost
+	);
+
 	if(error != cudaSuccess){
 		printf("Failed to copy data to host. Error:\n");
 		printf("%s\n", cudaGetErrorString(error));
-		return;
+		return -1;
 	}
+
+	return 0;
 }
 
 int gpuMultiplyBMV(
@@ -98,51 +126,6 @@ int gpuMultiplyBMV(
 
 	if(status != CUBLAS_STATUS_SUCCESS){
 		printf("Error in banded matrix vector multiplication.\n");
-		return -1;
-	}
-
-	return 0;
-}
-
-int gpuMultiplyMV(
-	const float * mat,
-	int matRows,
-	int matCols,
-	const float * vecIn,
-	int vecInStride,
-	float * vecOut,
-	int vecOutStride
-){
-	const float alpha = 1.0f;
-	const float beta = 0.0f;
-
-	cublasStatus_t status;
-	status = cublasSgemv(
-		handle,
-		// no transformation
-		CUBLAS_OP_N,
-		// dimensions of S
-		matRows, matCols,
-		// only product (alpha = 1)
-		&alpha,
-		// synapse matrix
-		mat,
-		// leading dimension of synapse matrix
-		matRows, 
-		// vector
-		vecIn,
-		// stride between elements
-		vecInStride,
-		// no addition (beta = 0)
-		&beta,
-		// result
-		vecOut,
-		// stride between elements
-		vecOutStride
-	);
-
-	if(status != CUBLAS_STATUS_SUCCESS){
-		printf("Error in matrix vector multiplication\n");
 		return -1;
 	}
 
