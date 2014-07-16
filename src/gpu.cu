@@ -1,13 +1,11 @@
-#include <math.h>
 #include <stdio.h>
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
 #include "gpu.h"
-#include "neuron.h"
 
 static cublasHandle_t handle;
 
-int  gpuInit(){
+int gpuInit(){
 	// we prefer L1 cache
 	cudaError_t error;
 	error = cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
