@@ -1,33 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <time.h>
 #include "gpu.h"
 #include "log.h"
 #include "net.h"
 
-static const char * dynParamFile = "dynParam.csv";
-static const char * dynStateFile = "dynState.csv";
-static const char * synFile = "syn.csv";
-
 int main(int argc, char ** argv){
 	int error;
 
-	// check CSV files
-	printf("Analyse CSV files... ");
+	// check files 
+	printf("Analyse files... ");
 	fflush(stdout);
 
 	int numNeurons;
-	int synSuper;
-	int synSub;
-	error = netReadSize(
-		&numNeurons,
-		&synSuper,
-		&synSub,
-		dynParamFile,
-		dynStateFile,
-		synFile
-	);
+	int numSyn;
+	error = netReadSize(&numNeurons, &numSyn);
 	if(error) return EXIT_FAILURE;
 
 	printf("done\n");
@@ -35,27 +22,29 @@ int main(int argc, char ** argv){
 		"> Number of neurons: %d\n"
 		"> Number of synapses per neuron: %d\n",
 		numNeurons,
-		synSuper + 1 + synSub
+		numSyn
 	);
 
-	// create new network
+	// create network
 	net_t net = {
 		.numNeurons = numNeurons,
-		.synSuper = synSuper,
-		.synSub = synSub
+		.neurons = {
+			.numNeurons = numNeurons
+		},
+		.syn = {
+			.numNeurons = numNeurons,
+			.numSyn = numSyn
+		}
 	};
+
+	// allocate memory
 	netNew(&net);
 
-	// load network from CSV files
-	printf("Loading CSV files... ");
+	// load network from files
+	printf("Loading files... ");
 	fflush(stdout);
 
-	error = netRead(
-		&net,
-		dynParamFile,
-		dynStateFile,
-		synFile
-	);
+	error = netRead(&net);
 	if(error) return EXIT_FAILURE;
 
 	printf("done\n");
@@ -73,7 +62,8 @@ int main(int argc, char ** argv){
 	fflush(stdout);
 
 	net_t gpuNet = net;
-	error = netToGPU(&gpuNet);
+	error = netCopyToGPU(&gpuNet);
+	
 	if(error){
 		printf("Failed to copy network to GPU.\n");
 		return EXIT_FAILURE;
@@ -96,19 +86,19 @@ int main(int argc, char ** argv){
 	printf("Running simulation... ");
 	fflush(stdout);
 
+	// start benchmarking
 	tic = clock();
-	while(net.t < 5000){
+
+	for(int t = 0; t < 1000; t++){
 		error = netUpdate(&gpuNet);
+
 		if(error){
 			printf("Error while updating network.\n");
 			printf("Abort simulation.\n");
 			break;
 		}
 
-		// update clock
-		net.t++;
-		gpuNet.t++;
-
+#if 0
 		/*
 		** logging
 		** Only sample with 200 Hz in order to increase execution speed.
@@ -126,7 +116,10 @@ int main(int argc, char ** argv){
 			logFiring(&net, firingFile);
 			logCurrent(&net, currentFile);
 		}
+#endif
 	}
+
+	// stop benchmarking
 	toc = clock();
 
 	// show stats
