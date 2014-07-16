@@ -2,6 +2,7 @@
 #define NET_H
 
 #include "neuron.h"
+#include "syn.h"
 
 /*
 ** Entire network of neurons
@@ -19,30 +20,17 @@ typedef struct {
 	float * firing;
 	// synaptic current
 	float * Isyn;
-	// synapse matrix
-	const float * syn;
-	// number of superdiagonals
-	const int synSuper;
-	// number of subdiagonals
-	const int synSub;
+	// synapses
+	syn_t syn;
 } net_t;
 
 int netNew(net_t * pNet);
 int netToGPU(net_t * gpuNet);
 void netInit(net_t * pNet);
 int netUpdate(net_t * pNet);
-int netRead(
-	net_t * pNet,
-	const char * dynParamFile,
-	const char * dynStateFile,
-	const char * synFile
-);
+int netRead(net_t * pNet);
 int netReadSize(
 	int * pNumNeurons,
-	int * pSynSuper,
-	int * pSynSub,
-	const char * dynParamFile,
-	const char * dynStateFile,
-	const char * synFile
+	int * pNumSyn
 );
 #endif

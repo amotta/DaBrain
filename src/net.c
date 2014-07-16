@@ -40,13 +40,11 @@ int netNew(net_t * pNet){
 		return -1;
 	}
 
-	// synapse table
-	pNet->syn = (float *) calloc(
-		(pNet->synSuper + 1 + pNet->synSub) * pNet->numNeurons,
-		sizeof(float)
-	);
-	if(!pNet->syn){
-		printf("Could not allocate memory for synapse matrix\n");
+	// synapses
+	int error = synNew(&pNet->syn);
+
+	if(error){
+		printf("Could not allocate memory for synapses\n");
 		return -1;
 	}
 
@@ -100,30 +98,17 @@ int netToGPU(net_t * gpuNet){
 		return -1;
 	}
 
-	const float * syn = NULL;
-	size_t synRows = gpuNet->synSuper + 1 + gpuNet->synSub;
-	size_t synCols = gpuNet->numNeurons;
-	gpuCopyMemoryToGPU(
-		(const void *) gpuNet->syn,
-		(void **) &syn,
-		synRows * synCols * sizeof(float)
-	);
-	if(!syn){
-		printf("Could not copy synapse matrix to GPU.\n");
-		return -1;
-	}
-
 	// write back
 	gpuNet->dynParam = dynParam;
 	gpuNet->dynState = dynState;
 	gpuNet->firing = firing;
 	gpuNet->Isyn = Isyn;
-	gpuNet->syn = syn;
 
 	return 0;
 }
 
 int netUpdateCurrent(net_t * pNet){
+/*
 	int error;
 	error = gpuMultiplyBMV(
 		// synapse matrix
@@ -142,6 +127,7 @@ int netUpdateCurrent(net_t * pNet){
 		printf("Could not update synaptic currents.\n");
 		return -1;
 	}
+*/
 
 	return 0;
 }
@@ -193,12 +179,10 @@ int netUpdate(net_t * pNet){
 	return 0;
 }
 
-int netRead(
-	net_t * pNet,
-	const char * dynParamFile,
-	const char * dynStateFile,
-	const char * synapseFile
-){
+static const char * dynParamFile = "dynParam.bin";
+static const char * dynStateFile = "dynState.bin";
+
+int netRead(net_t * pNet){
 	int error;
 
 	// read dynamics parameters
@@ -219,102 +203,85 @@ int netRead(
 	);
 	if(error) return error;
 
-	// read synapse matrix
-	error = ioReadMat(
-		synapseFile,
-		pNet->synSuper + 1 + pNet->synSub,
-		pNet->numNeurons,
-		(float *) pNet->syn
-	);
-	if(error) return error;
+	error = synRead(&pNet->syn);
+	if(error) return -1;
 
+	return 0;
+}
+
+int neuronReadSize(int * pNumNeurons){
+	int error;
+	int rows;
+	int cols;
+
+	// check neuron parameters
+	error = ioReadMatSize(dynParamFile, &rows, &cols);
+	if(error) return -1;
+
+	if(cols != DYN_PARAM_LEN){
+		printf("Invalid column count in %s\n", dynParamFile);
+		return -1;
+	}
+
+	// this should be a constant
+	const int numNeurons = rows;
+
+	// check neuron state
+	error = ioReadMatSize(dynStateFile, &rows, &cols);
+	if(error) return -1;
+
+	if(rows != numNeurons){
+		printf("Invalid rows count in %s\n", dynStateFile);
+		return -1;
+	}
+
+	if(cols != DYN_STATE_LEN){
+		printf("Invalid column count in %s\n", dynStateFile);
+		return -1;
+	}
+
+	// write back
+	*pNumNeurons = numNeurons;
+
+	// report success
 	return 0;
 }
 
 int netReadSize(
 	int * pNumNeurons,
-	int * pSynSuper,
-	int * pSynSub,
-	const char * dynParamFile,
-	const char * dynStateFile,
-	const char * synapseFile
+	int * pNumSyn
 ){
 	int error;
 
-	/*
-	** check dynamics parameter matrix
-	*/
-	int dynParamRows, dynParamCols;
-	error = ioReadMatSize(
-		dynParamFile,
-		&dynParamRows,
-		&dynParamCols
-	);
+	// read neurons
+	int neurons;
+	error = neuronReadSize(&neurons);
 
-	if(error) return error;
-	if(dynParamCols != DYN_PARAM_LEN){
-		printf("Invalid column count in %s\n", dynParamFile);
+	// check for error
+	if(error) return -1;
+
+	// should be a constant
+	const int numNeurons = neurons;
+
+	// read synapses
+	int syn;
+	error = synReadSize(&neurons, &syn);
+
+	// check for error
+	if(error) return -1;
+
+	// should be a constant
+	const int numSyn = syn;
+
+	// neuron count must agree
+	if(neurons != numNeurons){
+		printf("Neuron count conflicting\n");
 		return -1;
 	}
-
-	// set number of neurons
-	const int numNeurons = dynParamRows;
-
-	/*
-	** check dynamics state matrix
-	*/
-	int dynStateRows, dynStateCols;
-	error = ioReadMatSize(
-		dynStateFile,
-		&dynStateRows,
-		&dynStateCols
-	);
-
-	if(error) return error;
-
-	if(dynStateRows != numNeurons){
-		printf("Invalid row count in %s\n", dynStateFile);
-		return -1;
-	}
-
-	if(dynStateCols != DYN_STATE_LEN){
-		printf("Invalid column count in %s\n", dynStateFile);
-		return -1;
-	}
-
-	/*
-	** check synapse matrix
-	**
-	** NOTICE
-	** The synapse matrix is assumed to be banded with equal number of
-	** superdiagonals and subdiagonals. Together with the main diagonal
-	** this makes an odd number of rows in the matrix.
-	*/
-	int synapseRows, synapseCols;
-	error = ioReadMatSize(
-		synapseFile,
-		&synapseRows,
-		&synapseCols
-	);
-
-	if(error) return error;
-
-	if(synapseRows % 2 == 0){
-		printf("Expected odd number of rows in %s\n", synapseFile);
-		return -1;
-	}
-
-	if(synapseCols != numNeurons){
-		printf("Invalid column count in %s\n", synapseFile);
-	}
-
-	const int synSuper = (synapseRows - 1) / 2;
-	const int synSub = (synapseRows - 1) / 2;
 
 	// write back
 	*pNumNeurons = numNeurons;
-	*pSynSuper = synSuper;
-	*pSynSub = synSub;
+	*pNumSyn = numSyn;
 
 	return 0;
 }

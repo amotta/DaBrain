@@ -54,41 +54,8 @@ static const char * synMatFileNames[SYN_TYPE_LEN] = {
 static const char * synParamFileName = "synParam.bin";
 static const char * synStateFileName = "synState.bin";
 
-int synCheckSize(syn_t * syn){
-	int error;
-	int rows = 0;
-	int cols = 0;
-
-	for(int t = 0; t < SYN_TYPE_LEN; ++t){
-		error = ioReadMatSize(synMatFileNames[t], &rows, &cols);
-		if(error) return -1;
-		if(rows != syn->numSyn) return -1;
-		if(cols != syn->numNeurons) return -1;
-	}
-
-	error = ioReadMatSize("synParam.bin", &rows, &cols);
-	if(error) return -1;
-	if(rows != SYN_TYPE_LEN) return -1;
-	if(cols != SYN_PARAM_LEN) return -1;
-
-	error = ioReadMatSize("synState.bin", &rows, &cols);
-	if(error) return -1;
-	if(rows != syn->numNeurons) return -1;
-	if(cols != SYN_STATE_LEN) return -1;
-
-	return 0;
-}
-
 int synRead(syn_t * syn){
 	int error;
-
-	// check size of matrices
-	error = synCheckSize(syn);
-
-	if(error){
-		printf("Invalid matrix size detected\n");
-		return -1;
-	};
 
 	// load files
 	for(int t = 0; t < SYN_TYPE_LEN; ++t){
@@ -134,10 +101,87 @@ int synRead(syn_t * syn){
 	return 0;
 }
 
+int synReadSize(
+	int * pNumNeurons,
+	int * pNumSyn
+){
+	int error;
+	int rows = 0;
+	int cols = 0;
+
+	int numNeurons;
+	int numSyn;
+
+	// synapse matrices
+	for(int t = 0; t < SYN_TYPE_LEN; ++t){
+		error = ioReadMatSize(
+			synMatFileNames[t],
+			&rows,
+			&cols
+		);
+
+		if(error) return -1;
+
+		// use first file as template
+		if(t == 0){
+			numNeurons = cols;
+			numSyn = rows;
+		}
+
+		// check dimensions
+		if(rows != numSyn){
+			printf("Invalid row count in %s\n", synMatFileNames[t]);
+			return -1;
+		}else if(cols != numNeurons){
+			printf("Invalid column count in %s\n", synMatFileNames[t]);
+			return -1;
+		}
+	}
+
+	// synapse parameter matrix
+	error = ioReadMatSize(
+		synParamFileName,
+		&rows,
+		&cols
+	);
+
+	if(error){
+		return -1;
+	}else if(rows != SYN_TYPE_LEN){
+		printf("Invalid row count in %s\n", synParamFileName);
+		return -1;
+	}else if(cols != SYN_PARAM_LEN){
+		printf("Invalid column count in %s\n", synParamFileName);
+		return -1;
+	}
+
+	// synapse state matrix
+	error = ioReadMatSize(
+		synStateFileName,
+		&rows,
+		&cols
+	);
+
+	if(error){
+		return -1;
+	}else if(rows != numNeurons){
+		printf("Invalid row count in %s\n", synStateFileName);
+	}else if(cols != SYN_STATE_LEN){
+		printf("Invalid column count in %s\n", synStateFileName);
+		return -1;
+	}
+
+	// write back
+	*pNumNeurons = numNeurons;
+	*pNumSyn = numSyn;
+
+	return 0;
+}
 __global__ void synUpdateVec(
-	const int numNeurons,	
-	float * __restrict__ vecState,
-	const float * __restrict__ vecReset
+	const int numNeurons,
+	const float * __restrict__ vecReset,
+	const float * __restrict__ vecParam,
+	float * __restrict__ vecState
 ){
 	// synapse id
 	int id = blockDim.x * blockIdx.x + threadIdx.x;
@@ -163,7 +207,7 @@ __global__ void synUpdateVec(
 			];
 
 			// update value
-			state[s] = gpuTau[
+			state[s] = vecParam[
 				SYN_PARAM_LEN * t + s
 			] * state[s] * (1.0f - reset) + reset;
 
@@ -186,18 +230,20 @@ __global__ void synUpdateVec(
 
 #define NUM_WARPS 32
 int synUpdateState(
-	const int numNeurons,
-	float * synState,
-	const float * firing
+	const float * firingVec,
+	syn_t * pSyn
 ){
 	dim3 threads(32 * NUM_WARPS);
-	dim3 blocks((int) ceil((double) numNeurons / (32 * NUM_WARPS)));
+	dim3 blocks((int) ceil(
+		(double) pSyn->numNeurons / (32 * NUM_WARPS)
+	));
 
 	// launch kernel
 	synUpdateVec<<<blocks, threads>>>(
-		numNeurons,
-		synState,
-		firing
+		pSyn->numNeurons,
+		firingVec,
+		pSyn->synParam,
+		pSyn->synState
 	);
 
 	return 0;

@@ -44,6 +44,10 @@ typedef struct {
 
 int synNew(syn_t * syn);
 int synRead(syn_t * syn);
+int synReadSize(
+	int * pNumNeurons,
+	int * pNumSyn
+);
 int synUpdateState(
 	const float * firing,
 	syn_t * syn
