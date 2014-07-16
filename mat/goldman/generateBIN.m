@@ -107,13 +107,33 @@ end
 % Scale matrix
 bS = 2E-12 * bS;
 
-% Write synapse matrix
-fileID = fopen('syn.bin', 'w');
+% Write synapse matrices
+fileID = fopen('synExc.bin', 'w');
+fwrite(fileID, size(bS), 'int');
+fwrite(fileID, bS, 'float');
+fclose(fileID);
 
-for i = 1:2
-    fwrite(fileID, size(bS), 'int');
-    fwrite(fileID, bS, 'float');
-end
+fileID = fopen('synInh.bin', 'w');
+fwrite(fileID, size(bS), 'int');
+fwrite(fileID, bS, 'float');
+fclose(fileID);
+
+% Synapse parameter
+synParam = [0.9, 0.5; 0.7, 0.5];
+
+fileID = fopen('synParam.bin', 'w');
+fwrite(fileID, size(synParam), 'int');
+fwrite(fileID, synParam, 'float');
+fclose(fileID);
+
+% Synapse state
+synState = zeros(N, 3);
+
+fileID = fopen('synState.bin', 'w');
+fwrite(fileID, size(synState), 'int');
+fwrite(fileID, synState, 'float');
+fclose(fileID);
+
 %% Run CUDA simulation
 system('./dabrain');
 load('firing.log');
