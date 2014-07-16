@@ -1,32 +1,23 @@
+#include <stdio.h>
 #include "log.h"
 
-void logFiring(const net_t * pNet, FILE * logFile){
-	if(!logFile) return;
+int logVector(
+	const int vecLen,
+	const float * vec,
+	FILE * logFile
+){
+	if(!logFile){
+		printf("Invalid log file\n");
+		return -1;
+	}
 
-	int offset = DYN_STATE_V * pNet->numNeurons; 
-	float * vArr = &pNet->dynState[offset];
-
-	for(int n = 0; n < pNet->numNeurons; n++){
-		if(vArr[n] > -35.0e-3f){
-			fprintf(logFile, "%d\t%d\n", pNet->t, n);
+	for(int n = 0; n < vecLen; n++){
+		if(n > 0){
+			fprintf(logFile, " ");
 		}
-	}
-}
 
-void logCurrent(const net_t * pNet, FILE * logFile){
-	if(!logFile) return;
-
-	int offset = DYN_STATE_I * pNet->numNeurons;
-	float * iArr = &pNet->dynState[offset];
-
-	// log time
-	fprintf(logFile, "%d", pNet->t);
-
-	// log currents
-	for(int n = 0; n < pNet->numNeurons; n++){
-		fprintf(logFile, " %e", iArr[n]);
+		fprintf(logFile, "%e", vec[n]);
 	}
 
-	// end line
-	fprintf(logFile, "\n");
+	return 0;
 }
