@@ -229,7 +229,7 @@ int synReadSize(
 	return 0;
 }
 
-__global__ void synUpdateVec(
+__global__ void synUpdateStateKernel(
 	const int numNeurons,
 	const float * __restrict__ vecReset,
 	const float * __restrict__ vecParam,
@@ -291,7 +291,7 @@ int synUpdateState(
 	));
 
 	// launch kernel
-	synUpdateVec<<<blocks, threads>>>(
+	synUpdateStateKernel<<<blocks, threads>>>(
 		pSyn->numNeurons,
 		firingVec,
 		pSyn->synParam,

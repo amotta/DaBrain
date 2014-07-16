@@ -161,11 +161,11 @@ int neuronReadSize(int * pNumNeurons){
 // membrane area (C / mol)
 #define C_A 100e-12f
 
-__global__ void goldmanUpdateCUDA(
+__global__ void neuronUpdateKernel(
 	const int numNeurons,
 	const float * __restrict__ dynParam,
 	float * __restrict__ dynState,
-	float * __restrict__ firing
+	float * __restrict__ firingVec
 ){
 	// neuron id
 	int nId = blockDim.x * blockIdx.x + threadIdx.x;
@@ -202,7 +202,7 @@ __global__ void goldmanUpdateCUDA(
 	}
 
 	float dt = 1e-6f;
-	float aboveThresh = false;
+	float firing = 0.0f;
 	for(int i = 0; i < 1000; i++){
 		float expVal = expf(v * C_xi);
 		
@@ -277,7 +277,7 @@ __global__ void goldmanUpdateCUDA(
 
 		// check for action potential
 		if(v >= -35e-3f){
-			aboveThresh = true;
+			firing = 1.0f;
 		}
 	}
 
@@ -289,11 +289,7 @@ __global__ void goldmanUpdateCUDA(
 	dynState[DYN_STATE_N * numNeurons + nId] = n;
 
 	// write firing
-	if(aboveThresh){
-		firing[nId] = 1.0f;
-	}else{
-		firing[nId] = 0.0f;
-	}
+	firingVec[nId] = firing;
 }
 
 /*
@@ -320,7 +316,7 @@ int neuronUpdate(
 	);
 
 	// launch kernel
-	goldmanUpdateCUDA<<<grid, threads>>>(
+	neuronUpdateKernel<<<grid, threads>>>(
 		neuron->numNeurons,
 		neuron->dynParam,
 		neuron->dynState,
