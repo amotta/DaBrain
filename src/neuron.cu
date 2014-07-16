@@ -1,11 +1,76 @@
 #include <stdio.h>
+#include "gpu.h"
 #include "io.h"
 #include "neuron.h"
 
 static const char * dynParamFile = "dynParam.bin";
 static const char * dynStateFile = "dynState.bin";
 
+int neuronNew(neuron_t * neuron){
+	// parameters
+	const float * dynParam;
+	dynParam = (const float *) calloc(
+		neuron->numNeurons * DYN_PARAM_LEN,
+		sizeof(float)
+	);
+
+	if(!dynParam) return -1;
+
+	// state
+	float * dynState;
+	dynState = (float *) calloc(
+		neuron->numNeurons * DYN_STATE_LEN,
+		sizeof(float)
+	);
+
+	if(!dynState) return -1;
+
+	// write back
+	neuron->dynParam = dynParam;
+	neuron->dynState = dynState;
+
+	return 0;
+}
+
+int neuronCopyToGPU(neuron_t * neuron){
+	int error;
+
+ 	// neuronal parameters
+	const float * dynParam;
+	error = gpuCopyTo(
+		neuron->numNeurons * DYN_PARAM_LEN * sizeof(float),
+		(const void *) neuron->dynParam,
+		(void **) &dynParam
+	);
+
+	if(error){
+		printf("Could not copy neuron parameters to GPU\n");
+		return -1;
+	}
+
+	// neuronal state
+	float * dynState;
+	error = gpuCopyTo(
+		neuron->numNeurons * DYN_STATE_LEN * sizeof(float),
+		(const void *) neuron->dynState,
+		(void **) &dynState
+	);
+
+	if(error){
+		printf("Could not copy neuron states to GPU\n");
+		return -1;
+	}
+
+	// write back
+	neuron->dynParam = dynParam;
+	neuron->dynState = dynState;
+
+	return 0;
+}
+
 int neuronRead(neuron_t * neuron){
+	int error;
+
 	// read dynamics parameters
 	error = ioReadMat(
 		dynParamFile,
@@ -128,7 +193,7 @@ __global__ void goldmanUpdateCUDA(
 	float Istim = 0.0f;
 
 	// add stimulation
-	if(type < 0.5){
+	if(type < 0.5f){
 		// excitatory neuron
 		Istim += 5.5e-12f;
 	}else{
@@ -171,7 +236,7 @@ __global__ void goldmanUpdateCUDA(
 		v += dt / C_Cm * Itotal;
 
 		// Na activation
-		double dm = dt * (
+		float dm = dt * (
 			// aight
 			(1 - m) * 60000 * (v + 0.033f)
 			/ (1 - expf(-(v + 0.033f) / 0.003f))
@@ -182,7 +247,7 @@ __global__ void goldmanUpdateCUDA(
 		);
 
 		// Na inactivation
-		double dh = dt * (
+		float dh = dt * (
 			- (1 - h) * 50000 * (v + 0.065f)
 			/ (1 - expf((v + 0.065f) / 0.006f))
 			- h * 2250
@@ -190,7 +255,7 @@ __global__ void goldmanUpdateCUDA(
 		);
 
 		// K activation
-		double dn = dt * (
+		float dn = dt * (
 			// wumbaba
 			(1 - n) * 16000 * (v + 0.01f)
 			/ (1 - expf(-(v + 0.01f) / 0.01f))
@@ -237,18 +302,10 @@ __global__ void goldmanUpdateCUDA(
 ** See commit 569c50a3eab78bd089a25d7c04d79a1103279a7e
 */
 #define NUM_WARPS 20
-int neuronUpdateState(
+int neuronUpdate(
 	const float * cond,
 	neuron_t * neuron,
 	float * firing
-){
-
-int goldmanUpdateState(
-	int numNeurons,
-	float * dynState,
-	float * firing,
-	const float * dynParam,
-	const float * Isyn
 ){
 	// reset CUDA error
 	cudaGetLastError();

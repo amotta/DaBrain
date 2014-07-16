@@ -8,25 +8,19 @@
 ** Entire network of neurons
 */
 typedef struct {
-	// number of neurons
 	const int numNeurons;
-	// time
-	int t;
-	// neuron dynamics parameter
-	const float * dynParam;
-	// neuron state
-	float * dynState;
-	// neuron firing
-	float * firing;
-	// synaptic current
-	float * Isyn;
+	// neurons
+	neuron_t neurons;
 	// synapses
 	syn_t syn;
+	// firing vector
+	float * firing;
+	// conductance
+	float * cond;
 } net_t;
 
 int netNew(net_t * pNet);
-int netToGPU(net_t * gpuNet);
-void netInit(net_t * pNet);
+int netCopyToGPU(net_t * gpuNet);
 int netUpdate(net_t * pNet);
 int netRead(net_t * pNet);
 int netReadSize(

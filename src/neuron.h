@@ -40,9 +40,11 @@ typedef struct {
 	float * dynState;
 } neuron_t;
 
+int neuronNew(neuron_t * neuron);
+int neuronCopyToGPU(neuron_t * neuron);
 int neuronRead(neuron_t * neuron);
 int neuronReadSize(int * pNumNeurons);
-int neuronUpdateState(
+int neuronUpdate(
 	const float * cond,
 	neuron_t * neuron,
 	float * firing

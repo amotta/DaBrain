@@ -43,14 +43,16 @@ typedef struct {
 } syn_t;
 
 int synNew(syn_t * syn);
+int synCopyToGPU(syn_t * syn);
 int synRead(syn_t * syn);
 int synReadSize(
 	int * pNumNeurons,
 	int * pNumSyn
 );
-int synUpdateState(
+int synUpdate(
 	const float * firing,
-	syn_t * syn
+	syn_t * syn,
+	float * cond
 );
 
 #ifdef __cplusplus

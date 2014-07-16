@@ -6,6 +6,14 @@
 #include "io.h"
 #include "syn.h"
 
+static const char * synMatFileNames[SYN_TYPE_LEN] = {
+	"synExc.bin",
+	"synInh.bin"
+};
+
+static const char * synParamFileName = "synParam.bin";
+static const char * synStateFileName = "synState.bin";
+
 int synNew(syn_t * syn){
 	const float ** synMats = (const float **) calloc(
 		SYN_TYPE_LEN,
@@ -25,7 +33,7 @@ int synNew(syn_t * syn){
 	}
 
 	const float * synParam = (const float *) calloc(
-		SYN_PARAM_LEN * syn->numNeurons,
+		SYN_TYPE_LEN * SYN_PARAM_LEN,
 		sizeof(const float)
 	);
 
@@ -46,13 +54,56 @@ int synNew(syn_t * syn){
 	return 0;
 }
 
-static const char * synMatFileNames[SYN_TYPE_LEN] = {
-	"synExc.bin",
-	"synInh.bin"
-};
+int synCopyToGPU(syn_t * syn){
+	int error;
 
-static const char * synParamFileName = "synParam.bin";
-static const char * synStateFileName = "synState.bin";
+	// lookup table
+	const float ** synMats;
+	synMats = (const float **) calloc(
+		SYN_TYPE_LEN,
+		sizeof(const float *)
+	);
+
+	if(!synMats) return - 1;
+
+	// synapse matrices
+	for(int t = 0; t < SYN_TYPE_LEN; ++t){
+		error = gpuCopyTo(
+			syn->numNeurons * syn->numSyn * sizeof(float),
+			(const void *) syn->synMats[t],
+			(void **) &synMats[t]
+		);
+
+		if(error) return -1;
+	}
+
+	// synapse parameters
+	float * synParam;
+	error = gpuCopyTo(
+		SYN_TYPE_LEN * SYN_PARAM_LEN * sizeof(float),
+		(const void *) syn->synParam,
+		(void **) &synParam
+	);
+
+	if(error) return -1;
+
+	// synapse state
+	float * synState;
+	error = gpuCopyTo(
+		SYN_STATE_LEN * syn->numNeurons * sizeof(float),
+		(const void *) syn->synState,
+		(void **) &synState
+	);
+
+	if(error) return -1;
+
+	// write back
+	syn->synMats = synMats;
+	syn->synParam = synParam;
+	syn->synState = synState;
+
+	return 0;
+}
 
 int synRead(syn_t * syn){
 	int error;
@@ -177,6 +228,7 @@ int synReadSize(
 
 	return 0;
 }
+
 __global__ void synUpdateVec(
 	const int numNeurons,
 	const float * __restrict__ vecReset,
@@ -249,52 +301,58 @@ int synUpdateState(
 	return 0;
 }
 
-int synUpdateCurrent(
-	const int numNeurons,
-	const float * synState,
-	const float ** synMats,
-	const int synSuper,
-	const int synSub,
-	float * Isyn
+int synUpdateCond(
+	const syn_t * syn,
+	float * cond
 ){
-	cudaError_t error;
+	int error;
 
-	float * gpuCond;
-	error = cudaMalloc((void **) &gpuCond, numNeurons * sizeof(float));
-
-	if(error){
-		printf("Could not allocate memory\n");
-		return -1;
-	}
+	// number of upper and lower diagonals 
+	const int numDiags = (syn->numSyn - 1) / 2;
 
 	for(int t = 0; t < SYN_TYPE_LEN; ++t){
-		const float * synActive = &synState[
-			SYN_STATE_LEN * numNeurons * t
-			+ SYN_STATE_A * numNeurons
+		// pointer to activity
+		const float * curActivity = &syn->synState[
+			SYN_STATE_LEN * syn->numNeurons * t
+			+ SYN_STATE_A * syn->numNeurons
 		];
 
-		gpuMultiplyBMV(
+		// pointer to conductance
+		float * curConductance = &cond[
+			syn->numNeurons * t
+		];
+
+		error = gpuMultiplyBMV(
 			// synapse matrix
-			synMats[t],
-			numNeurons,
-			numNeurons,
-			synSuper,
-			synSub,
+			syn->synMats[t],
+			syn->numNeurons,
+			syn->numNeurons,
+			numDiags,
+			numDiags,
 			// activity vector
-			synActive, 1,
+			curActivity, 1,
 			// conductance vector
-			gpuCond, 1
+			curConductance, 1
 		);
 
-		/*
-		** TODO
-		** I = conductance x bias
-		** bias = voltage - reversal potential
-		** Isyn = sum of all I
-		*/
+		if(error) return -1;
 	}
-	
-	cudaFree(gpuCond);
+
+	return 0;
+}
+
+int synUpdate(
+	const float * firing,
+	syn_t * syn,
+	float * cond
+){
+	int error;
+
+	error = synUpdateState(firing, syn);
+	if(error) return -1;
+
+	error = synUpdateCond(syn, cond);
+	if(error) return -1;
 
 	return 0;
 }
