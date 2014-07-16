@@ -1,29 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "io.h"
-#include "io_bin.h"
-#include "io_csv.h"
-
-enum FILE_TYPE {
-	FILE_TYPE_BIN,
-	FILE_TYPE_CSV,
-	FILE_TYPE_ERR
-};
-
-int fileNameToType(const char * fileName){
-	const char * suffix = strchr(fileName, '.');
-
-	if(!suffix){
-		printf("File name has no suffix\n");
-		return FILE_TYPE_ERR;
-	}
-
-	if(!strcmp(".bin", suffix)) return FILE_TYPE_BIN;
-	if(!strcmp(".csv", suffix)) return FILE_TYPE_CSV;
-
-	printf("File name has invalid suffix\n");
-	return FILE_TYPE_ERR;
-}
 
 int ioReadMat(
 	const char * fileName,
@@ -31,32 +8,47 @@ int ioReadMat(
 	const int cols,
 	float * mat
 ){
-	int error = 0;
-	int type = fileNameToType(fileName);
+	// open file
+	FILE * file = fopen(fileName, "r");
 
-	switch(type){
-		case FILE_TYPE_BIN:
-			error = ioBinReadMat(
-				fileName,
-				rows, cols,
-				mat
-			);
-			break;
-
-		case FILE_TYPE_CSV:
-			error = ioCsvReadMat(
-				fileName,
-				rows, cols,
-				mat
-			);
-			break;
-
-		default:
-			error = -1;
-			break;
+	// check for error
+	if(!file){
+		printf("Could not open file %s\n", fileName);
+		return -1;
 	}
 
-	return error;
+	// skip the matrix size
+	int error = fseek(
+		file,
+		2 * sizeof(int),
+		SEEK_CUR
+	);
+
+	if(error){
+		printf("Could not skip matrix size\n");
+
+		fclose(file);
+		return -1;
+	}
+
+	size_t numTotal = (size_t) rows * cols;
+	size_t numRead = fread(
+		(void *) mat,
+		sizeof(float),
+		numTotal,
+		file
+	);
+
+	if(numRead < numTotal){
+		printf("Failed to read file %s\n", fileName),
+
+		fclose(file);
+		return -1;
+	}
+
+	// close file
+	fclose(file);
+	return 0;
 }
 
 int ioReadMatSize(
@@ -64,28 +56,43 @@ int ioReadMatSize(
 	int * rows,
 	int * cols
 ){
-	int error = 0;
-	int type = fileNameToType(fileName);
+	FILE * file = fopen(fileName, "r");
 
-	switch(type){
-		case FILE_TYPE_BIN:
-			error = ioBinReadMatSize(
-				fileName,
-				rows, cols
-			);
-			break;
-
-		case FILE_TYPE_CSV:
-			error = ioCsvReadMatSize(
-				fileName,
-				rows, cols
-			);
-			break;
-
-		default:
-			error = -1;
-			break;
+	// check for error
+	if(!file){
+		printf("Could not open file %s\n", fileName);
+		return -1;
 	}
 
-	return error;
+	int status = 0;
+	size_t numRead;
+
+	// read row count
+	int numRowsRead;
+	numRead = fread((void *) &numRowsRead, sizeof(int), 1, file);
+
+	if(!numRead){
+		printf("Could not read row count from %s\n", fileName);
+
+		fclose(file);
+		return -1;
+	}
+
+	// read column count
+	int numColsRead;
+	numRead = fread((void *) &numColsRead, sizeof(int), 1, file);
+
+	if(!numRead){
+		printf("Could not read column count from %s\n", fileName);
+
+		fclose(file);
+		return -1;
+	}
+
+	// write back
+	*rows = numRowsRead;
+	*cols = numColsRead;
+
+	fclose(file);
+	return 0;
 }
