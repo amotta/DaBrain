@@ -1,5 +1,77 @@
 #include <stdio.h>
-#include "goldman.h"
+#include "io.h"
+#include "neuron.h"
+
+static const char * dynParamFile = "dynParam.bin";
+static const char * dynStateFile = "dynState.bin";
+
+int neuronRead(neuron_t * neuron){
+	// read dynamics parameters
+	error = ioReadMat(
+		dynParamFile,
+		neuron->numNeurons,
+		DYN_PARAM_LEN,
+		(float *) neuron->dynParam
+	);
+
+	if(error){
+		printf("Failed to read %s\n", dynParamFile);
+		return -1;
+	}
+
+	// read dynamics state matrix
+	error = ioReadMat(
+		dynStateFile,
+		neuron->numNeurons,
+		DYN_STATE_LEN,
+		neuron->dynState
+	);
+
+	if(error){
+		printf("Failed to read %s\n", dynStateFile);
+		return -1;
+	}
+
+	return 0;
+}
+
+int neuronReadSize(int * pNumNeurons){
+	int error;
+	int rows;
+	int cols;
+
+	// check neuron parameters
+	error = ioReadMatSize(dynParamFile, &rows, &cols);
+	if(error) return -1;
+
+	if(cols != DYN_PARAM_LEN){
+		printf("Invalid column count in %s\n", dynParamFile);
+		return -1;
+	}
+
+	// this should be a constant
+	const int numNeurons = rows;
+
+	// check neuron state
+	error = ioReadMatSize(dynStateFile, &rows, &cols);
+	if(error) return -1;
+
+	if(rows != numNeurons){
+		printf("Invalid rows count in %s\n", dynStateFile);
+		return -1;
+	}
+
+	if(cols != DYN_STATE_LEN){
+		printf("Invalid column count in %s\n", dynStateFile);
+		return -1;
+	}
+
+	// write back
+	*pNumNeurons = numNeurons;
+
+	// report success
+	return 0;
+}
 
 // Faraday constant (C / mol)
 #define C_F 96485.34f
@@ -25,11 +97,10 @@
 #define C_A 100e-12f
 
 __global__ void goldmanUpdateCUDA(
-	int numNeurons,
-	float * dynState,
-	float * firing,
-	const float * dynParam,
-	const float * Isyn
+	const int numNeurons,
+	const float * __restrict__ dynParam,
+	float * __restrict__ dynState,
+	float * __restrict__ firing
 ){
 	// neuron id
 	int nId = blockDim.x * blockIdx.x + threadIdx.x;
@@ -52,8 +123,9 @@ __global__ void goldmanUpdateCUDA(
 	// total current (A / m^2)
 	float Itotal;
 
+	// TODO
 	// transmembrane current (A / m^2)
-	float Istim = Isyn[nId];
+	float Istim = 0.0f;
 
 	// add stimulation
 	if(type < 0.5){
@@ -165,6 +237,11 @@ __global__ void goldmanUpdateCUDA(
 ** See commit 569c50a3eab78bd089a25d7c04d79a1103279a7e
 */
 #define NUM_WARPS 20
+int neuronUpdateState(
+	const float * cond,
+	neuron_t * neuron,
+	float * firing
+){
 
 int goldmanUpdateState(
 	int numNeurons,
@@ -181,13 +258,16 @@ int goldmanUpdateState(
 
 	// update neurons
 	dim3 threads(blockSize);
-	dim3 grid((int) ceil((double) numNeurons / blockSize));
+	dim3 grid((int) ceil(
+		(double) neuron->numNeurons / blockSize)
+	);
+
+	// launch kernel
 	goldmanUpdateCUDA<<<grid, threads>>>(
-		numNeurons,
-		dynState,
-		firing,
-		dynParam,
-		Isyn
+		neuron->numNeurons,
+		neuron->dynParam,
+		neuron->dynState,
+		firing
 	);
 
 	// check for error
@@ -200,4 +280,3 @@ int goldmanUpdateState(
 
 	return 0;
 }
-
