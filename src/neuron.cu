@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 #include "gpu.h"
 #include "io.h"
@@ -338,8 +339,8 @@ int neuronUpdate(
 	// update neurons
 	dim3 threads(blockSize);
 	dim3 grid((int) ceil(
-		(double) neuron->numNeurons / blockSize)
-	);
+		(double) neuron->numNeurons / blockSize
+	));
 
 	// launch kernel
 	neuronUpdateKernel<<<grid, threads>>>(
