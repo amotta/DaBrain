@@ -30,7 +30,7 @@ int gpuCopyTo(
 	const void * hPtr,
 	void ** dPtr
 ){
-	cudaError_t error = cudaSuccess;
+	cudaError_t error;
 
 	// allocate memory on GPU
 	error = cudaMalloc(dPtr, size);
