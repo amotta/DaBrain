@@ -310,6 +310,7 @@ int synUpdateCond(
 	// number of upper and lower diagonals 
 	const int numDiags = (syn->numSyn - 1) / 2;
 
+	#pragma unroll
 	for(int t = 0; t < SYN_TYPE_LEN; ++t){
 		// pointer to activity
 		const float * curActivity = &syn->synState[
