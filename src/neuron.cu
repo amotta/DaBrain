@@ -233,7 +233,7 @@ __global__ void neuronUpdateKernel(
 		Itotal = Istim - Ina - Ik - Il;
 
 		// membrane voltage
-		v += dt / C_Cm * Itotal;
+		float dv = dt / C_Cm * Itotal;
 
 		// Na activation
 		float dm = dt * (
@@ -267,9 +267,11 @@ __global__ void neuronUpdateKernel(
 		** We should try to avoid this. Excessive use of registers
 		** limits the degree of parallelization on GPGPU.
 		*/
-		if(isnan(dm) || isnan(dh) || isnan(dn)){
-			// nothing
-		}else{
+		if(
+			!isnan(dv) && !isnan(dm)
+			&& !isnan(dh) && !isnan(dn)
+		){
+			v += dv;
 			m += dm;
 			h += dh;
 			n += dn;
