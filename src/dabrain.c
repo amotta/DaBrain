@@ -75,9 +75,6 @@ int main(int argc, char ** argv){
 	FILE * firingFile;
 	firingFile = fopen("firing.log", "w");
 
-	FILE * currentFile;
-	currentFile = fopen("current.log", "w");
-
 	// prepare benchmark
 	clock_t tic;
 	clock_t toc;
@@ -93,30 +90,30 @@ int main(int argc, char ** argv){
 		error = netUpdate(&gpuNet);
 
 		if(error){
-			printf("Error while updating network.\n");
+			printf("Error during network update\n");
 			printf("Abort simulation.\n");
 			break;
 		}
 
-#if 0
-		/*
-		** logging
-		** Only sample with 200 Hz in order to increase execution speed.
-		** The Nyquist frequency is still high enough to observe the
-		** band of gamma frequencies.
-		*/
-		if(net.t % 5 == 0){
-			// copy firing neurons to host
-			gpuCopyMemoryFromGPU(
-				gpuNet.dynState,
-				net.dynState,
-				2 * net.numNeurons * sizeof(float)
-			);
-			
-			logFiring(&net, firingFile);
-			logCurrent(&net, currentFile);
+		// copy voltages to host
+		error = gpuCopyFrom(
+			net.numNeurons * sizeof(float),
+			gpuNet.neurons.dynState,
+			net.neurons.dynState
+		);
+
+		if(error){
+			printf("Failed to copy data to host\n");
+			return -1;
 		}
-#endif
+
+		// log voltages
+		logVectorStamped(
+			t,
+			net.numNeurons,
+			net.neurons.dynState,
+			firingFile
+		);
 	}
 
 	// stop benchmarking
@@ -131,7 +128,6 @@ int main(int argc, char ** argv){
 
 	// end logging
 	fclose(firingFile);
-	fclose(currentFile);
 
 	return EXIT_SUCCESS;
 }
