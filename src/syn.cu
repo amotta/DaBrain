@@ -40,7 +40,7 @@ int synNew(syn_t * syn){
 	if(!synParam) return -1;
 
 	float * synState = (float *) calloc(
-		SYN_STATE_LEN * syn->numNeurons,
+		SYN_TYPE_LEN * SYN_STATE_LEN * syn->numNeurons,
 		sizeof(float)
 	);
 
@@ -90,7 +90,8 @@ int synCopyToGPU(syn_t * syn){
 	// synapse state
 	float * synState;
 	error = gpuCopyTo(
-		SYN_STATE_LEN * syn->numNeurons * sizeof(float),
+		SYN_TYPE_LEN * SYN_STATE_LEN
+		* syn->numNeurons * sizeof(float),
 		(const void *) syn->synState,
 		(void **) &synState
 	);
@@ -251,24 +252,27 @@ __global__ void synUpdateStateKernel(
 	for(int t = 0; t < SYN_TYPE_LEN; ++t){
 		#pragma unroll
 		for(int s = 0; s < SYN_PARAM_LEN; ++s){
-			// load into register
-			state[s] = vecState[
+			float * const statePtr = &vecState[
 				SYN_STATE_LEN * numNeurons * t
 				+ s * numNeurons
 				+ id
 			];
 
-			// update value
-			state[s] = vecParam[
+			const float decay = vecParam[
 				SYN_PARAM_LEN * t + s
-			] * state[s] * (1.0f - reset) + reset;
+			];
 
-			// store
-			vecState[
-				SYN_STATE_LEN * numNeurons * t
-				+ s * numNeurons
-				+ id
-			] = state[s];
+			// load into register
+			state[s] = *statePtr;
+
+			// update state (if no reset)
+			state[s] = decay * state[s] * (1.0f - reset);
+
+			// reset state (if flag set)
+			state[s] = state[s] + reset;
+
+			// write back
+			*statePtr = state[s];
 		}
 
 		// activity
@@ -313,13 +317,13 @@ int synUpdateCond(
 	#pragma unroll
 	for(int t = 0; t < SYN_TYPE_LEN; ++t){
 		// pointer to activity
-		const float * curActivity = &syn->synState[
+		const float * const activityPtr = &syn->synState[
 			SYN_STATE_LEN * syn->numNeurons * t
 			+ SYN_STATE_A * syn->numNeurons
 		];
 
 		// pointer to conductance
-		float * curConductance = &cond[
+		float * const conductancePtr = &cond[
 			syn->numNeurons * t
 		];
 
@@ -331,9 +335,9 @@ int synUpdateCond(
 			numDiags,
 			numDiags,
 			// activity vector
-			curActivity, 1,
+			activityPtr, 1,
 			// conductance vector
-			curConductance, 1
+			conductancePtr, 1
 		);
 
 		if(error) return -1;
