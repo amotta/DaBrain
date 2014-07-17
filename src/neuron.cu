@@ -2,6 +2,7 @@
 #include "gpu.h"
 #include "io.h"
 #include "neuron.h"
+#include "syn.h"
 
 static const char * dynParamFile = "dynParam.bin";
 static const char * dynStateFile = "dynState.bin";
@@ -156,6 +157,10 @@ int neuronReadSize(int * pNumNeurons){
 #define C_cKO 2.5f
 // leakage reversal potential (V)
 #define C_eL -70e-3f
+// excitatory reversal potential (V)
+#define C_eExc 0.0f
+// inhibitory reversal potential (V) 
+#define C_eInh 0.0f
 // membrane capacitance (F / m^2)
 #define C_Cm 7e-12f
 // membrane area (C / mol)
@@ -163,12 +168,13 @@ int neuronReadSize(int * pNumNeurons){
 
 __global__ void neuronUpdateKernel(
 	const int numNeurons,
+	const float * __restrict__ cond,
 	const float * __restrict__ dynParam,
 	float * __restrict__ dynState,
 	float * __restrict__ firingVec
 ){
 	// neuron id
-	int nId = blockDim.x * blockIdx.x + threadIdx.x;
+	const int nId = blockDim.x * blockIdx.x + threadIdx.x;
 
 	// let's not exaggerate
 	if(nId >= numNeurons) return;
@@ -180,25 +186,28 @@ __global__ void neuronUpdateKernel(
 	float n = dynState[DYN_STATE_N * numNeurons + nId];
 
 	// parameters
-	float gL   = dynParam[DYN_PARAM_GL   * numNeurons + nId];
-	float pNa  = dynParam[DYN_PARAM_PNA  * numNeurons + nId];
-	float pK   = dynParam[DYN_PARAM_PK   * numNeurons + nId];
-	float type = dynParam[DYN_PARAM_TYPE * numNeurons + nId];
+	const float gL   = dynParam[DYN_PARAM_GL   * numNeurons + nId];
+	const float pNa  = dynParam[DYN_PARAM_PNA  * numNeurons + nId];
+	const float pK   = dynParam[DYN_PARAM_PK   * numNeurons + nId];
+	const float type = dynParam[DYN_PARAM_TYPE * numNeurons + nId];
+
+	// conductances
+	const float gExc = cond[SYN_TYPE_EXC * numNeurons + nId];
+	const float gInh = cond[SYN_TYPE_INH * numNeurons + nId];
 
 	// total current (A / m^2)
 	float Itotal;
 
-	// TODO
-	// transmembrane current (A / m^2)
+	// stimulation current (A / m^2)
 	float Istim = 0.0f;
 
 	// add stimulation
 	if(type < 0.5f){
 		// excitatory neuron
-		Istim += 5.5e-12f;
+		Istim = 5.5e-12f;
 	}else{
 		// inhibitory neuron
-		Istim += 10e-12f;
+		Istim = 10e-12f;
 	}
 
 	float dt = 1e-6f;
@@ -206,12 +215,6 @@ __global__ void neuronUpdateKernel(
 	for(int i = 0; i < 1000; i++){
 		float expVal = expf(v * C_xi);
 		
-		// leakage current
-		float Il = gL * (v - C_eL);
-
-		float Ina = 0;
-		float Ik = 0;
-
 		/*
 		** TODO
 		** This is a very crude way to prevent a division by zero.
@@ -219,18 +222,41 @@ __global__ void neuronUpdateKernel(
 		** - Check for zero voltage before expVal
 		** - Try to use de l'Hôpital's rule
 		*/
-		if(expVal != 1.0f){
-			// Na current
-			float goldNa = (C_cNaO - C_cNaI * expVal) / (1.0f - expVal);
-			Ina = C_A * C_F * C_xi * m * m * h * pNa * v * goldNa;
+		float Ina;
+		Ina  = C_A * C_F * C_xi * m * m * h * pNa;
+		Ina *= C_cNaO - C_cNaI * expVal;
 
-			// K current
-			float goldK = (C_cKO - C_cKI * expVal) / (1.0f - expVal);
-			Ik = C_A * C_F * C_xi * n * n * pK * v * goldK;
+		float Ik;
+		Ik  = C_A * C_F * C_xi * n * n * pK;
+		Ik *= C_cKO - C_cKI * expVal;
+
+		/*
+		** Avoid division by zero and use de l'Hôpital's rule
+		** to calculate Ina and Ik.
+		*/
+		if(expVal == 1.0f){
+			Ina *= 1.0f / (1.0f - C_xi);
+			Ik  *= 1.0f / (1.0f - C_xi);
+		}else{
+			Ina *= v / (1.0f - expVal);
+			Ik  *= v / (1.0f - expVal);
 		}
 
-		// calculate total current
-		Itotal = Istim - Ina - Ik - Il;
+		// add stimulation current
+		Itotal  = Istim;
+
+		// add leakage, Na, and K current
+		Itotal -= gL * (v - C_eL);
+
+		// Na current
+		Itotal -= Ina;
+
+		// K+ current
+		Itotal -= Ik;
+
+		// add synaptic currents
+		Itotal -= gExc * (v - C_eExc);
+		Itotal -= gInh * (v - C_eInh);
 
 		// membrane voltage
 		float dv = dt / C_Cm * Itotal;
@@ -263,15 +289,13 @@ __global__ void neuronUpdateKernel(
 			/ (1 - expf((v + 0.035f) / 0.01f))
 		);
 
-		/*
-		** We should try to avoid this. Excessive use of registers
-		** limits the degree of parallelization on GPGPU.
-		*/
-		if(
-			!isnan(dv) && !isnan(dm)
-			&& !isnan(dh) && !isnan(dn)
-		){
-			v += dv;
+		// always update membrane voltage
+		v += dv;
+
+		// we should try to avoid this
+		if(isnan(dm) || isnan(dh) || isnan(dn)){
+			// nothing
+		}else{
 			m += dm;
 			h += dh;
 			n += dn;
@@ -320,6 +344,7 @@ int neuronUpdate(
 	// launch kernel
 	neuronUpdateKernel<<<grid, threads>>>(
 		neuron->numNeurons,
+		cond,
 		neuron->dynParam,
 		neuron->dynState,
 		firing
