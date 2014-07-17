@@ -9,5 +9,10 @@ int logVector(
 	const float * vec,
 	FILE * logFile
 );
-
+int logVectorStamped(
+	const int stamp,
+	const int vecLen,
+	const float * vec,
+	FILE * logFile
+);
 #endif
