@@ -4,7 +4,15 @@
 #include <stdio.h>
 #include "net.h"
 
-void logFiring(const net_t * pNet, FILE * file);
-void logCurrent(const net_t * pNet, FILE * logFile);
-
+int logVector(
+	const int vecLen,
+	const float * vec,
+	FILE * logFile
+);
+int logVectorStamped(
+	const int stamp,
+	const int vecLen,
+	const float * vec,
+	FILE * logFile
+);
 #endif

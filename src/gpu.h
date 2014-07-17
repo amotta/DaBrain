@@ -6,15 +6,15 @@ extern "C" {
 #endif
 
 int gpuInit();
-void gpuCopyMemoryToGPU(
+int gpuCopyTo(
+	const size_t size,
 	const void * hPtr,
-	void ** dPtr,
-	size_t size
+	void ** dPtr
 );
-void gpuCopyMemoryFromGPU(
+int gpuCopyFrom(
+	const size_t size,
 	const void * dPtr,
-	void * hPtr,
-	size_t size
+	void * hPtr
 );
 int gpuMultiplyBMV(
 	const float * mat,
@@ -27,21 +27,10 @@ int gpuMultiplyBMV(
 	float * vecOut,
 	int vecOutStride
 );
-int gpuMultiplyMV(
-	const float * mat,
-	int matRows,
-	int matCols,
-	const float * vecIn,
-	int vecInStride,
-	float * vecOut,
-	int vecOutStride
-);
-int gpuUpdateState(
-	int numNeurons,
-	float * dynState,
-	float * firing,
-	const float * dynParam,
-	const float * Isyn
+int gpuMultiplySV(
+	int vecRows,
+	const float * alpha,
+	float * vec
 );
 
 #ifdef __cplusplus

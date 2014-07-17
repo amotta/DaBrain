@@ -1,32 +1,43 @@
+#include <stdio.h>
 #include "log.h"
 
-void logFiring(const net_t * pNet, FILE * logFile){
-	if(!logFile) return;
+int logVector(
+	const int vecLen,
+	const float * vec,
+	FILE * logFile
+){
+	if(!logFile) return -1;
 
-	int offset = DYN_STATE_V * pNet->numNeurons; 
-	float * vArr = &pNet->dynState[offset];
+	for(int n = 0; n < vecLen; n++){
+		// delimiter
+		if(n) fprintf(logFile, " ");
 
-	for(int n = 0; n < pNet->numNeurons; n++){
-		if(vArr[n] > -35.0e-3f){
-			fprintf(logFile, "%d\t%d\n", pNet->t, n);
-		}
+		// value
+		fprintf(logFile, "%e", vec[n]);
 	}
+
+	// line break
+	fprintf(logFile, "\n");
+
+	return 0;
 }
 
-void logCurrent(const net_t * pNet, FILE * logFile){
-	if(!logFile) return;
+int logVectorStamped(
+	const int stamp,
+	const int vecLen,
+	const float * vec,
+	FILE * logFile
+){
+	int error;
 
-	int offset = DYN_STATE_I * pNet->numNeurons;
-	float * iArr = &pNet->dynState[offset];
+	if(!logFile) return -1;
 
-	// log time
-	fprintf(logFile, "%d", pNet->t);
+	// stamp
+	fprintf(logFile, "%d ", stamp);
 
-	// log currents
-	for(int n = 0; n < pNet->numNeurons; n++){
-		fprintf(logFile, " %e", iArr[n]);
-	}
+	// vector
+	error = logVector(vecLen, vec, logFile);
+	if(error) return -1;
 
-	// end line
-	fprintf(logFile, "\n");
+	return 0;
 }

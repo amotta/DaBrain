@@ -1,33 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <time.h>
 #include "gpu.h"
 #include "log.h"
 #include "net.h"
 
-static const char * dynParamFile = "dynParam.csv";
-static const char * dynStateFile = "dynState.csv";
-static const char * synFile = "syn.csv";
-
 int main(int argc, char ** argv){
 	int error;
 
-	// check CSV files
-	printf("Analyse CSV files... ");
+	// check files 
+	printf("Analyse files... ");
 	fflush(stdout);
 
 	int numNeurons;
-	int synSuper;
-	int synSub;
-	error = netReadSize(
-		&numNeurons,
-		&synSuper,
-		&synSub,
-		dynParamFile,
-		dynStateFile,
-		synFile
-	);
+	int numSyn;
+	error = netReadSize(&numNeurons, &numSyn);
 	if(error) return EXIT_FAILURE;
 
 	printf("done\n");
@@ -35,27 +22,29 @@ int main(int argc, char ** argv){
 		"> Number of neurons: %d\n"
 		"> Number of synapses per neuron: %d\n",
 		numNeurons,
-		synSuper + 1 + synSub
+		numSyn
 	);
 
-	// create new network
+	// create network
 	net_t net = {
 		.numNeurons = numNeurons,
-		.synSuper = synSuper,
-		.synSub = synSub
+		.neurons = {
+			.numNeurons = numNeurons
+		},
+		.syn = {
+			.numNeurons = numNeurons,
+			.numSyn = numSyn
+		}
 	};
+
+	// allocate memory
 	netNew(&net);
 
-	// load network from CSV files
-	printf("Loading CSV files... ");
+	// load network from files
+	printf("Loading files... ");
 	fflush(stdout);
 
-	error = netRead(
-		&net,
-		dynParamFile,
-		dynStateFile,
-		synFile
-	);
+	error = netRead(&net);
 	if(error) return EXIT_FAILURE;
 
 	printf("done\n");
@@ -73,7 +62,8 @@ int main(int argc, char ** argv){
 	fflush(stdout);
 
 	net_t gpuNet = net;
-	error = netToGPU(&gpuNet);
+	error = netCopyToGPU(&gpuNet);
+	
 	if(error){
 		printf("Failed to copy network to GPU.\n");
 		return EXIT_FAILURE;
@@ -85,9 +75,6 @@ int main(int argc, char ** argv){
 	FILE * firingFile;
 	firingFile = fopen("firing.log", "w");
 
-	FILE * currentFile;
-	currentFile = fopen("current.log", "w");
-
 	// prepare benchmark
 	clock_t tic;
 	clock_t toc;
@@ -96,37 +83,40 @@ int main(int argc, char ** argv){
 	printf("Running simulation... ");
 	fflush(stdout);
 
+	// start benchmarking
 	tic = clock();
-	while(net.t < 5000){
+
+	for(int t = 0; t < 1000; t++){
 		error = netUpdate(&gpuNet);
+
 		if(error){
-			printf("Error while updating network.\n");
+			printf("Error during network update\n");
 			printf("Abort simulation.\n");
 			break;
 		}
 
-		// update clock
-		net.t++;
-		gpuNet.t++;
+		// copy voltages to host
+		error = gpuCopyFrom(
+			net.numNeurons * sizeof(float),
+			gpuNet.neurons.dynState,
+			net.neurons.dynState
+		);
 
-		/*
-		** logging
-		** Only sample with 200 Hz in order to increase execution speed.
-		** The Nyquist frequency is still high enough to observe the
-		** band of gamma frequencies.
-		*/
-		if(net.t % 5 == 0){
-			// copy firing neurons to host
-			gpuCopyMemoryFromGPU(
-				gpuNet.dynState,
-				net.dynState,
-				2 * net.numNeurons * sizeof(float)
-			);
-			
-			logFiring(&net, firingFile);
-			logCurrent(&net, currentFile);
+		if(error){
+			printf("Failed to copy data to host\n");
+			return -1;
 		}
+
+		// log voltages
+		logVectorStamped(
+			t,
+			net.numNeurons,
+			net.neurons.dynState,
+			firingFile
+		);
 	}
+
+	// stop benchmarking
 	toc = clock();
 
 	// show stats
@@ -138,7 +128,6 @@ int main(int argc, char ** argv){
 
 	// end logging
 	fclose(firingFile);
-	fclose(currentFile);
 
 	return EXIT_SUCCESS;
 }

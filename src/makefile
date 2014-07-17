@@ -26,7 +26,7 @@ NVCCFLAGS  = -arch=sm_20
 NVCCFLAGS += -g
 
 # Libraries
-LIBS = -lm -lcudart -lcublas -lcsv
+LIBS = -lm -lcudart -lcublas 
 
 # C files
 CSRC = $(wildcard *.c)
