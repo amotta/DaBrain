@@ -161,7 +161,7 @@ int neuronReadSize(int * pNumNeurons){
 // excitatory reversal potential (V)
 #define C_eExc 0.0f
 // inhibitory reversal potential (V) 
-#define C_eInh 0.0f
+#define C_eInh -65e-3f
 // membrane capacitance (F / m^2)
 #define C_Cm 7e-12f
 // membrane area (C / mol)
