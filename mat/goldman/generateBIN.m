@@ -9,7 +9,7 @@ ku = 500;
 kl = 500;
 
 % Number of neurons
-N = 10016;
+N = 1024;
 Ni = round(pInh * N);
 Ne = N - Ni;
 
@@ -49,7 +49,7 @@ fwrite(fileID, dynParam, 'float');
 fclose(fileID);
 
 % Membrane voltage
-vZero = -70E-3 * ones(N, 1) + 0.45 * rand(N, 1);
+vZero = -70E-3 * ones(N, 1) + 30E-3 * rand(N, 1);
 
 % Transmembrane current
 % This value is never read
@@ -107,7 +107,6 @@ for bRow = 1 : (ku + 1 + kl)
 end
 
 % Scale matrix
-% synExc = 9E-11 * synExc;
 synExc = 9E-9 * synExc;
 
 % Write excitatory synapses
@@ -118,7 +117,7 @@ fclose(fileID);
 
 % Inhibitory synapses
 % synInh = 9E-11 * synInh;
-synInh = 12E-9 * synInh;
+synInh = 4.6E-9 * synInh;
 
 fileID = fopen('synInh.bin', 'w');
 fwrite(fileID, size(synInh), 'int');
@@ -137,7 +136,7 @@ fwrite(fileID, synParam, 'float');
 fclose(fileID);
 
 % Synapse state
-synState = zeros(N, 3);
+synState = zeros(N, 6);
 
 fileID = fopen('synState.bin', 'w');
 fwrite(fileID, size(synState), 'int');
@@ -145,9 +144,15 @@ fwrite(fileID, synState, 'float');
 fclose(fileID);
 
 %% Run CUDA simulation
+clear;
+
+% run simulation
 system('./dabrain');
+
+%% Find firing neurons
 load('firing.log');
+[rows, cols] = find(firing(:, 2:end) > -0.035);
 
 figure;
-plot(firing(:, 1), firing(:, 2), '.');
-title('Neuron firing CUDA');
+plot(rows, cols,'.');
+title('Neuron firing');

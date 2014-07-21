@@ -141,7 +141,7 @@ int synRead(syn_t * syn){
 	error = ioReadMat(
 		synStateFileName,
 		syn->numNeurons,
-		SYN_STATE_LEN,
+		SYN_TYPE_LEN * SYN_STATE_LEN,
 		syn->synState
 	);
 
@@ -218,7 +218,7 @@ int synReadSize(
 		return -1;
 	}else if(rows != numNeurons){
 		printf("Invalid row count in %s\n", synStateFileName);
-	}else if(cols != SYN_STATE_LEN){
+	}else if(cols != SYN_TYPE_LEN * SYN_STATE_LEN){
 		printf("Invalid column count in %s\n", synStateFileName);
 		return -1;
 	}
